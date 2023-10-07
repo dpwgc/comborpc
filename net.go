@@ -76,8 +76,8 @@ func tcpProcess(s *ServerModel, conn net.Conn) error {
 	if err != nil {
 		return err
 	}
-	var requestArray []requestModel
-	err = json.Unmarshal(buf[:n], &requestArray)
+	var requestList []requestModel
+	err = json.Unmarshal(buf[:n], &requestList)
 	if err != nil {
 		return err
 	}
@@ -86,8 +86,8 @@ func tcpProcess(s *ServerModel, conn net.Conn) error {
 		Data:  make(map[string]any),
 	}
 	var wg sync.WaitGroup
-	wg.Add(len(requestArray))
-	for _, request := range requestArray {
+	wg.Add(len(requestList))
+	for _, request := range requestList {
 		if s.router[request.Method] == nil {
 			resAg.Error[request.Method] = "no method found"
 			wg.Done()

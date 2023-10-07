@@ -18,12 +18,12 @@ func (c *ClientModel) Add(method string, data string) *ClientModel {
 	return c
 }
 
-func (c *ClientModel) Send(endpoint string) (string, error) {
+func (c *ClientModel) Send() (string, error) {
 	marshal, err := json.Marshal(c.requestList)
 	if err != nil {
 		return "", err
 	}
-	res, err := tcpSend(endpoint, marshal)
+	res, err := tcpSend(c.endpoint, marshal)
 	if err != nil {
 		return "", err
 	}
