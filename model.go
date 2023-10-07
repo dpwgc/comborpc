@@ -7,7 +7,7 @@ import (
 
 type ServerModel struct {
 	endpoint string
-	router   map[string]func(ctx context.Context, data string) any
+	router   map[string]func(ctx context.Context, data string) string
 	timeout  time.Duration
 	close    bool
 }
@@ -24,5 +24,5 @@ type requestModel struct {
 
 type responseModel struct {
 	Error map[string]string `json:"e"`
-	Data  map[string]any    `json:"d"`
+	Data  map[string]string `json:"d"`
 }

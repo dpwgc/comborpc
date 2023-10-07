@@ -18,14 +18,19 @@ func (c *ClientModel) Add(method string, data string) *ClientModel {
 	return c
 }
 
-func (c *ClientModel) Send() (string, error) {
+func (c *ClientModel) Send() (map[string]string, map[string]string, error) {
 	marshal, err := json.Marshal(c.requestList)
 	if err != nil {
-		return "", err
+		return nil, nil, err
 	}
 	res, err := tcpSend(c.endpoint, marshal)
 	if err != nil {
-		return "", err
+		return nil, nil, err
 	}
-	return string(res), nil
+	resObj := responseModel{}
+	err = json.Unmarshal(res, &resObj)
+	if err != nil {
+		return nil, nil, err
+	}
+	return resObj.Data, resObj.Error, nil
 }

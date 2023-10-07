@@ -8,14 +8,15 @@ import (
 func NewServer(endpoint string, timeout time.Duration) *ServerModel {
 	return &ServerModel{
 		endpoint: endpoint,
-		router:   make(map[string]func(ctx context.Context, message string) any),
+		router:   make(map[string]func(ctx context.Context, data string) string),
 		timeout:  timeout,
 		close:    true,
 	}
 }
 
-func (s *ServerModel) Add(methodName string, methodFunc func(ctx context.Context, message string) any) {
+func (s *ServerModel) Add(methodName string, methodFunc func(ctx context.Context, data string) string) *ServerModel {
 	s.router[methodName] = methodFunc
+	return s
 }
 
 func (s *ServerModel) Listen() {

@@ -83,7 +83,7 @@ func tcpProcess(s *ServerModel, conn net.Conn) error {
 	}
 	var resAg = responseModel{
 		Error: make(map[string]string),
-		Data:  make(map[string]any),
+		Data:  make(map[string]string),
 	}
 	var wg sync.WaitGroup
 	wg.Add(len(requestList))
