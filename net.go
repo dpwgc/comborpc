@@ -1,4 +1,4 @@
-package ebrpc
+package comborpc
 
 import (
 	"bufio"
@@ -35,8 +35,8 @@ func tcpSend(endpoint string, body []byte) ([]byte, error) {
 }
 
 // tcp服务监听
-func tcpListen(s *SubscriberServerModel) {
-	server, err := net.Listen("tcp", s.serverEndpoint)
+func tcpListen(s *ServerModel) {
+	server, err := net.Listen("tcp", s.endpoint)
 	if err != nil {
 		panic(err)
 	}
@@ -63,7 +63,7 @@ func tcpListen(s *SubscriberServerModel) {
 }
 
 // tcp处理函数
-func tcpProcess(s *SubscriberServerModel, conn net.Conn) error {
+func tcpProcess(s *ServerModel, conn net.Conn) error {
 	defer func(conn net.Conn) {
 		err := conn.Close()
 		if err != nil {
@@ -76,12 +76,9 @@ func tcpProcess(s *SubscriberServerModel, conn net.Conn) error {
 	if err != nil {
 		return err
 	}
-	event := eventModel{}
-	err = json.Unmarshal(buf[:n], &event)
+	var requestArray []requestModel
+	err = json.Unmarshal(buf[:n], &requestArray)
 	if err != nil {
-		return err
-	}
-	if s.subscriberRouter[event.Topic] == nil {
 		return err
 	}
 	var resAg = responseModel{
@@ -89,20 +86,25 @@ func tcpProcess(s *SubscriberServerModel, conn net.Conn) error {
 		Data:  make(map[string]any),
 	}
 	var wg sync.WaitGroup
-	wg.Add(len(s.subscriberRouter[event.Topic]))
-	for subscriberName, subscriberFunc := range s.subscriberRouter[event.Topic] {
-		go func(subscriberName string, subscriberFunc func(ctx context.Context, message string) any) {
-			ctx, cancel := context.WithTimeout(context.TODO(), s.processTimeout)
+	wg.Add(len(requestArray))
+	for _, request := range requestArray {
+		if s.router[request.Method] == nil {
+			resAg.Error[request.Method] = "no method found"
+			wg.Done()
+			continue
+		}
+		go func(request requestModel) {
+			ctx, cancel := context.WithTimeout(context.TODO(), s.timeout)
 			defer cancel()
-			res := subscriberFunc(ctx, event.Message)
+			res := s.router[request.Method](ctx, request.Data)
 			handleErr := recover()
 			if handleErr != nil {
-				resAg.Error[subscriberName] = fmt.Sprintf("%v", err)
+				resAg.Error[request.Method] = fmt.Sprintf("%v", err)
 			} else {
-				resAg.Data[subscriberName] = res
+				resAg.Data[request.Method] = res
 			}
 			wg.Done()
-		}(subscriberName, subscriberFunc)
+		}(request)
 	}
 	wg.Wait()
 	marshal, err := json.Marshal(resAg)

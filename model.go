@@ -1,20 +1,25 @@
-package ebrpc
+package comborpc
 
 import (
 	"context"
 	"time"
 )
 
-type SubscriberServerModel struct {
-	serverEndpoint   string
-	subscriberRouter map[string]map[string]func(ctx context.Context, message string) any
-	processTimeout   time.Duration
-	close            bool
+type ServerModel struct {
+	endpoint string
+	router   map[string]func(ctx context.Context, data string) any
+	timeout  time.Duration
+	close    bool
 }
 
-type eventModel struct {
-	Topic   string `json:"t"`
-	Message string `json:"m"`
+type ClientModel struct {
+	endpoint    string
+	requestList []requestModel
+}
+
+type requestModel struct {
+	Method string `json:"m"`
+	Data   string `json:"d"`
 }
 
 type responseModel struct {
