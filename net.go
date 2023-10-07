@@ -4,10 +4,13 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net"
+	"sync"
 )
 
+// tcp发送
 func tcpSend(endpoint string, body []byte) ([]byte, error) {
 	conn, err := net.Dial("tcp", endpoint)
 	if err != nil {
@@ -23,7 +26,7 @@ func tcpSend(endpoint string, body []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	buf := make([]byte, 1024)
+	buf := make([]byte, 1024*1024)
 	n, err := conn.Read(buf)
 	if err != nil {
 		return nil, err
@@ -44,17 +47,23 @@ func tcpListen(s *SubscriberServerModel) {
 		}
 	}(server)
 	for {
+		if s.close {
+			break
+		}
 		// 接收tcp数据
 		conn, err := server.Accept()
 		if err != nil {
 			log.Println(err)
 		}
-		tcpProcess(s, conn)
+		err = tcpProcess(s, conn)
+		if err != nil {
+			log.Println(err)
+		}
 	}
 }
 
 // tcp处理函数
-func tcpProcess(s *SubscriberServerModel, conn net.Conn) {
+func tcpProcess(s *SubscriberServerModel, conn net.Conn) error {
 	defer func(conn net.Conn) {
 		err := conn.Close()
 		if err != nil {
@@ -62,43 +71,47 @@ func tcpProcess(s *SubscriberServerModel, conn net.Conn) {
 		}
 	}(conn)
 	reader := bufio.NewReader(conn)
-	var buf [1024]byte
+	var buf [1024 * 1024]byte
 	n, err := reader.Read(buf[:]) // 读取数据
 	if err != nil {
-		log.Println(err)
-		return
+		return err
 	}
 	event := eventModel{}
 	err = json.Unmarshal(buf[:n], &event)
 	if err != nil {
-		log.Println(err)
-		return
+		return err
 	}
 	if s.subscriberRouter[event.Topic] == nil {
-		return
+		return err
 	}
-	var resAg = make(map[string]map[string]any)
+	var resAg = responseModel{
+		Error: make(map[string]string),
+		Data:  make(map[string]any),
+	}
+	var wg sync.WaitGroup
+	wg.Add(len(s.subscriberRouter[event.Topic]))
 	for subscriberName, subscriberFunc := range s.subscriberRouter[event.Topic] {
 		go func(subscriberName string, subscriberFunc func(ctx context.Context, message string) any) {
-			res := make(map[string]any)
-			d := subscriberFunc(context.Background(), event.Message)
-			err := recover()
-			if err != nil {
-				res["e"] = err
+			ctx, cancel := context.WithTimeout(context.TODO(), s.processTimeout)
+			defer cancel()
+			res := subscriberFunc(ctx, event.Message)
+			handleErr := recover()
+			if handleErr != nil {
+				resAg.Error[subscriberName] = fmt.Sprintf("%v", err)
 			} else {
-				res["d"] = d
+				resAg.Data[subscriberName] = res
 			}
-			resAg[subscriberName] = res
+			wg.Done()
 		}(subscriberName, subscriberFunc)
 	}
+	wg.Wait()
 	marshal, err := json.Marshal(resAg)
 	if err != nil {
-		log.Println(err)
-		return
+		return err
 	}
 	_, err = conn.Write(marshal)
 	if err != nil {
-		log.Println(err)
-		return
+		return err
 	}
+	return nil
 }
