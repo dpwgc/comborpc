@@ -35,7 +35,7 @@ func tcpSend(endpoint string, body []byte) ([]byte, error) {
 }
 
 // tcp服务监听
-func tcpListen(s *ServerModel) {
+func tcpListen(s *Server) {
 	server, err := net.Listen("tcp", s.endpoint)
 	if err != nil {
 		panic(err)
@@ -63,7 +63,7 @@ func tcpListen(s *ServerModel) {
 }
 
 // tcp处理函数
-func tcpProcess(s *ServerModel, conn net.Conn) error {
+func tcpProcess(s *Server, conn net.Conn) error {
 	defer func(conn net.Conn) {
 		err := conn.Close()
 		if err != nil {
@@ -76,16 +76,16 @@ func tcpProcess(s *ServerModel, conn net.Conn) error {
 	if err != nil {
 		return err
 	}
-	var requestList []RequestModel
+	var requestList []Request
 	err = json.Unmarshal(buf[:n], &requestList)
 	if err != nil {
 		return err
 	}
-	var responseList []ResponseModel
+	var responseList []Response
 	var wg sync.WaitGroup
 	wg.Add(len(requestList))
 	for i := 0; i < len(requestList); i++ {
-		responseList = append(responseList, ResponseModel{})
+		responseList = append(responseList, Response{})
 		if s.router[requestList[i].Method] == nil {
 			responseList[i].Error = "no method found"
 			wg.Done()
