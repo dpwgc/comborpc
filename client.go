@@ -4,33 +4,65 @@ import (
 	"encoding/json"
 )
 
-func NewClient(endpoint string) *ClientModel {
-	return &ClientModel{
+func NewComboRequest(endpoint string) *ComboRequestModel {
+	return &ComboRequestModel{
 		endpoint: endpoint,
 	}
 }
 
-func (c *ClientModel) Add(method string, data string) *ClientModel {
-	c.requestList = append(c.requestList, requestModel{
-		method,
-		data,
-	})
+func (c *ComboRequestModel) Add(request RequestModel) *ComboRequestModel {
+	c.requestList = append(c.requestList, request)
 	return c
 }
 
-func (c *ClientModel) Send() (map[string]string, map[string]string, error) {
+func (c *ComboRequestModel) Send() ([]ResponseModel, error) {
 	marshal, err := json.Marshal(c.requestList)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	res, err := tcpSend(c.endpoint, marshal)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	resObj := responseModel{}
-	err = json.Unmarshal(res, &resObj)
+	var resList []ResponseModel
+	err = json.Unmarshal(res, &resList)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return resObj.Data, resObj.Error, nil
+	return resList, nil
+}
+
+func NewSingleRequest(endpoint string) *SingleRequestModel {
+	return &SingleRequestModel{
+		endpoint: endpoint,
+	}
+}
+
+func (c *SingleRequestModel) Set(request RequestModel) *SingleRequestModel {
+	if len(c.requestList) == 0 {
+		c.requestList = append(c.requestList, request)
+	} else {
+		c.requestList[0] = request
+	}
+	return c
+}
+
+func (c *SingleRequestModel) Send() (ResponseModel, error) {
+	marshal, err := json.Marshal(c.requestList)
+	if err != nil {
+		return ResponseModel{}, err
+	}
+	res, err := tcpSend(c.endpoint, marshal)
+	if err != nil {
+		return ResponseModel{}, err
+	}
+	var resList []ResponseModel
+	err = json.Unmarshal(res, &resList)
+	if err != nil {
+		return ResponseModel{}, err
+	}
+	if len(resList) == 0 {
+		return ResponseModel{}, nil
+	}
+	return resList[0], nil
 }

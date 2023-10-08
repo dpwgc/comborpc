@@ -76,38 +76,36 @@ func tcpProcess(s *ServerModel, conn net.Conn) error {
 	if err != nil {
 		return err
 	}
-	var requestList []requestModel
+	var requestList []RequestModel
 	err = json.Unmarshal(buf[:n], &requestList)
 	if err != nil {
 		return err
 	}
-	var resAg = responseModel{
-		Error: make(map[string]string),
-		Data:  make(map[string]string),
-	}
+	var responseList []ResponseModel
 	var wg sync.WaitGroup
 	wg.Add(len(requestList))
-	for _, request := range requestList {
-		if s.router[request.Method] == nil {
-			resAg.Error[request.Method] = "no method found"
+	for i := 0; i < len(requestList); i++ {
+		responseList = append(responseList, ResponseModel{})
+		if s.router[requestList[i].Method] == nil {
+			responseList[i].Error = "no method found"
 			wg.Done()
 			continue
 		}
-		go func(request requestModel) {
+		go func(i int) {
 			ctx, cancel := context.WithTimeout(context.TODO(), s.timeout)
 			defer cancel()
-			res := s.router[request.Method](ctx, request.Data)
+			res := s.router[requestList[i].Method](ctx, requestList[i].Data)
 			handleErr := recover()
 			if handleErr != nil {
-				resAg.Error[request.Method] = fmt.Sprintf("%v", err)
+				responseList[i].Error = fmt.Sprintf("%v", handleErr)
 			} else {
-				resAg.Data[request.Method] = res
+				responseList[i].Data = res
 			}
 			wg.Done()
-		}(request)
+		}(i)
 	}
 	wg.Wait()
-	marshal, err := json.Marshal(resAg)
+	marshal, err := json.Marshal(responseList)
 	if err != nil {
 		return err
 	}

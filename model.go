@@ -12,17 +12,22 @@ type ServerModel struct {
 	close    bool
 }
 
-type ClientModel struct {
+type ComboRequestModel struct {
 	endpoint    string
-	requestList []requestModel
+	requestList []RequestModel
 }
 
-type requestModel struct {
+type SingleRequestModel struct {
+	endpoint    string
+	requestList []RequestModel
+}
+
+type RequestModel struct {
 	Method string `json:"m"`
 	Data   string `json:"d"`
 }
 
-type responseModel struct {
-	Error map[string]string `json:"e"`
-	Data  map[string]string `json:"d"`
+type ResponseModel struct {
+	Error string `json:"e"`
+	Data  string `json:"d"`
 }
