@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 )
 
-func NewComboRequest(endpoint string) *ComboRequestBuilder {
+func NewComboRequestBuilder(endpoint string) *ComboRequestBuilder {
 	return &ComboRequestBuilder{
 		endpoint: endpoint,
 	}
@@ -32,7 +32,7 @@ func (c *ComboRequestBuilder) Send() ([]Response, error) {
 	return resList, nil
 }
 
-func NewSingleRequest(endpoint string) *SingleRequestBuilder {
+func NewSingleRequestBuilder(endpoint string) *SingleRequestBuilder {
 	return &SingleRequestBuilder{
 		endpoint: endpoint,
 	}

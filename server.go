@@ -5,8 +5,8 @@ import (
 	"time"
 )
 
-func NewServer(endpoint string, timeout time.Duration) *Server {
-	return &Server{
+func NewRouter(endpoint string, timeout time.Duration) *Router {
+	return &Router{
 		endpoint: endpoint,
 		router:   make(map[string]func(ctx context.Context, data string) string),
 		timeout:  timeout,
@@ -14,16 +14,16 @@ func NewServer(endpoint string, timeout time.Duration) *Server {
 	}
 }
 
-func (s *Server) Add(methodName string, methodFunc func(ctx context.Context, data string) string) *Server {
+func (s *Router) Add(methodName string, methodFunc func(ctx context.Context, data string) string) *Router {
 	s.router[methodName] = methodFunc
 	return s
 }
 
-func (s *Server) Listen() {
+func (s *Router) Listen() {
 	s.close = false
 	go tcpListen(s)
 }
 
-func (s *Server) Close() {
+func (s *Router) Close() {
 	s.close = true
 }

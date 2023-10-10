@@ -11,7 +11,7 @@ import (
 )
 
 // tcp发送
-func tcpSend(endpoint string, body []byte) ([]byte, error) {
+func tcpSend(endpoint string, data []byte) ([]byte, error) {
 	conn, err := net.Dial("tcp", endpoint)
 	if err != nil {
 		return nil, err
@@ -22,7 +22,7 @@ func tcpSend(endpoint string, body []byte) ([]byte, error) {
 			log.Println(err)
 		}
 	}(conn)
-	_, err = conn.Write(body)
+	_, err = conn.Write(data)
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +35,7 @@ func tcpSend(endpoint string, body []byte) ([]byte, error) {
 }
 
 // tcp服务监听
-func tcpListen(s *Server) {
+func tcpListen(s *Router) {
 	server, err := net.Listen("tcp", s.endpoint)
 	if err != nil {
 		panic(err)
@@ -63,7 +63,7 @@ func tcpListen(s *Server) {
 }
 
 // tcp处理函数
-func tcpProcess(s *Server, conn net.Conn) error {
+func tcpProcess(s *Router, conn net.Conn) error {
 	defer func(conn net.Conn) {
 		err := conn.Close()
 		if err != nil {
