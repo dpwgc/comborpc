@@ -73,7 +73,7 @@ func tcpRead(conn net.Conn) ([]byte, error) {
 }
 
 // tcp服务监听
-func tcpListen(r *RPCRouter) {
+func tcpListen(r *Router) {
 	server, err := net.Listen("tcp", r.endpoint)
 	if err != nil {
 		panic(err)
@@ -101,7 +101,7 @@ func tcpListen(r *RPCRouter) {
 }
 
 // tcp处理函数
-func tcpProcess(r *RPCRouter, conn net.Conn) error {
+func tcpProcess(r *Router, conn net.Conn) error {
 	defer func(conn net.Conn) {
 		err := conn.Close()
 		if err != nil {
@@ -141,11 +141,29 @@ func tcpProcess(r *RPCRouter, conn net.Conn) error {
 		}(i)
 	}
 	wg.Wait()
-	marshal, err := json.Marshal(responseList)
+	resultBody, err := json.Marshal(responseList)
 	if err != nil {
 		return err
 	}
-	_, err = conn.Write(marshal)
+	resultBodyLen := len(resultBody)
+	resultBodyLenBytes := int64ToBytes(int64(resultBodyLen))
+	// 发送消息头（数据长度）
+	binLen, err := conn.Write(resultBodyLenBytes)
+	if err != nil {
+		return err
+	}
+	if binLen != TCPHeaderLen {
+		return errors.New("header len not match")
+	}
+	// 发送消息体（数据包）
+	binLen, err = conn.Write(resultBody)
+	if err != nil {
+		return err
+	}
+	if binLen != resultBodyLen {
+		return errors.New("body len not match")
+	}
+	_, err = conn.Write(resultBody)
 	if err != nil {
 		return err
 	}
