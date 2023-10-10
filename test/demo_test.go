@@ -20,11 +20,11 @@ func Test(t *testing.T) {
 
 	fmt.Println("-----\n3. send combo request")
 	responseList, err := comborpc.NewComboRequestBuilder(endpoint).
-		Add(comborpc.Request{
+		AddRequest(comborpc.Request{
 			Method: "testMethod1",
 			Data:   "test request data 1",
 		}).
-		Add(comborpc.Request{
+		AddRequest(comborpc.Request{
 			Method: "testMethod2",
 			Data:   "test request data 2",
 		}).Send()
@@ -37,7 +37,7 @@ func Test(t *testing.T) {
 
 	fmt.Println("-----\n4. send single request")
 	response, err := comborpc.NewSingleRequestBuilder(endpoint).
-		Set(comborpc.Request{
+		SetRequest(comborpc.Request{
 			Method: "testMethod1",
 			Data:   "testData1",
 		}).Send()
@@ -53,9 +53,9 @@ func Test(t *testing.T) {
 
 func enableTestRouter(endpoint string) {
 	comborpc.NewRouter(endpoint, 30*time.Second).
-		Add("testMethod1", testMethod1).
-		Add("testMethod2", testMethod2).
-		Listen()
+		AddMethod("testMethod1", testMethod1).
+		AddMethod("testMethod2", testMethod2).
+		ListenAndServe()
 }
 
 func testMethod1(ctx context.Context, data string) string {

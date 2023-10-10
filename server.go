@@ -16,16 +16,16 @@ func NewRouter(endpoint string, timeout time.Duration) *Router {
 	}
 }
 
-// Add
+// AddMethod
 // append the processing method to the service route
-func (r *Router) Add(methodName string, methodFunc func(ctx context.Context, data string) string) *Router {
+func (r *Router) AddMethod(methodName string, methodFunc func(ctx context.Context, data string) string) *Router {
 	r.router[methodName] = methodFunc
 	return r
 }
 
-// Listen
+// ListenAndServe
 // start the routing listening service
-func (r *Router) Listen() {
+func (r *Router) ListenAndServe() {
 	r.close = false
 	go tcpListen(r)
 }

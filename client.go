@@ -12,9 +12,9 @@ func NewComboRequestBuilder(endpoint string) *ComboRequestBuilder {
 	}
 }
 
-// Add
+// AddRequest
 // append the request body
-func (b *ComboRequestBuilder) Add(request Request) *ComboRequestBuilder {
+func (b *ComboRequestBuilder) AddRequest(request Request) *ComboRequestBuilder {
 	b.requestList = append(b.requestList, request)
 	return b
 }
@@ -46,9 +46,9 @@ func NewSingleRequestBuilder(endpoint string) *SingleRequestBuilder {
 	}
 }
 
-// Set
-// create a request body
-func (b *SingleRequestBuilder) Set(request Request) *SingleRequestBuilder {
+// SetRequest
+// set a request body
+func (b *SingleRequestBuilder) SetRequest(request Request) *SingleRequestBuilder {
 	if len(b.requestList) == 0 {
 		b.requestList = append(b.requestList, request)
 	} else {
