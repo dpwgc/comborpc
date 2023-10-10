@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+var router *comborpc.Router
+
 func Test(t *testing.T) {
 
 	fmt.Println("-----\n1. start test")
@@ -48,14 +50,22 @@ func Test(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	fmt.Println("-----\n5. end test")
+	fmt.Println("-----\n5. router close")
+	err = router.Close()
+	if err != nil {
+		panic(err)
+	}
+
+	time.Sleep(1 * time.Second)
+
+	fmt.Println("-----\n6. end test")
 }
 
 func enableTestRouter(endpoint string) {
-	comborpc.NewRouter(endpoint, 30*time.Second).
+	router = comborpc.NewRouter(endpoint, 10000, 100, 30*time.Second).
 		AddMethod("testMethod1", testMethod1).
-		AddMethod("testMethod2", testMethod2).
-		ListenAndServe()
+		AddMethod("testMethod2", testMethod2)
+	router.ListenAndServe()
 }
 
 func testMethod1(ctx context.Context, data string) string {

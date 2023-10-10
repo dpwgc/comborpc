@@ -73,27 +73,45 @@ func tcpRead(conn net.Conn) ([]byte, error) {
 }
 
 // tcp服务监听
-func tcpListen(r *Router) {
+func enableTcpListener(r *Router) {
 	server, err := net.Listen("tcp", r.endpoint)
 	if err != nil {
 		panic(err)
 	}
 	defer func(server net.Listener) {
+		if r.close {
+			return
+		}
 		err = server.Close()
+		r.close = true
 		if err != nil {
-			log.Println(err)
+			panic(err)
 		}
 	}(server)
+	r.listener = server
 	for {
-		if r.close {
-			break
-		}
 		// 接收tcp数据
 		conn, err := server.Accept()
 		if err != nil {
+			if r.close {
+				return
+			}
 			log.Println(err)
+		} else {
+			r.queue <- conn
 		}
-		err = tcpProcess(r, conn)
+	}
+}
+
+func enableTcpConsumer(r *Router) {
+	for {
+		conn, ok := <-r.queue
+		if !ok {
+			if r.close {
+				return
+			}
+		}
+		err := tcpProcess(r, conn)
 		if err != nil {
 			log.Println(err)
 		}

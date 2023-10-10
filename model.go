@@ -2,14 +2,18 @@ package comborpc
 
 import (
 	"context"
+	"net"
 	"time"
 )
 
 type Router struct {
-	endpoint string
-	router   map[string]func(ctx context.Context, data string) string
-	timeout  time.Duration
-	close    bool
+	endpoint    string
+	router      map[string]func(ctx context.Context, data string) string
+	queue       chan net.Conn
+	consumerNum int
+	timeout     time.Duration
+	listener    net.Listener
+	close       bool
 }
 
 type ComboRequestBuilder struct {
