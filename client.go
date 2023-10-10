@@ -14,19 +14,19 @@ func NewComboRequestBuilder(endpoint string) *ComboRequestBuilder {
 
 // Add
 // append the request body
-func (c *ComboRequestBuilder) Add(request Request) *ComboRequestBuilder {
-	c.requestList = append(c.requestList, request)
-	return c
+func (b *ComboRequestBuilder) Add(request Request) *ComboRequestBuilder {
+	b.requestList = append(b.requestList, request)
+	return b
 }
 
 // Send
 // perform a send operation
-func (c *ComboRequestBuilder) Send() ([]Response, error) {
-	marshal, err := json.Marshal(c.requestList)
+func (b *ComboRequestBuilder) Send() ([]Response, error) {
+	marshal, err := json.Marshal(b.requestList)
 	if err != nil {
 		return nil, err
 	}
-	res, err := tcpSend(c.endpoint, marshal)
+	res, err := tcpSend(b.endpoint, marshal)
 	if err != nil {
 		return nil, err
 	}
@@ -48,23 +48,23 @@ func NewSingleRequestBuilder(endpoint string) *SingleRequestBuilder {
 
 // Set
 // create a request body
-func (c *SingleRequestBuilder) Set(request Request) *SingleRequestBuilder {
-	if len(c.requestList) == 0 {
-		c.requestList = append(c.requestList, request)
+func (b *SingleRequestBuilder) Set(request Request) *SingleRequestBuilder {
+	if len(b.requestList) == 0 {
+		b.requestList = append(b.requestList, request)
 	} else {
-		c.requestList[0] = request
+		b.requestList[0] = request
 	}
-	return c
+	return b
 }
 
 // Send
 // perform a send operation
-func (c *SingleRequestBuilder) Send() (Response, error) {
-	marshal, err := json.Marshal(c.requestList)
+func (b *SingleRequestBuilder) Send() (Response, error) {
+	marshal, err := json.Marshal(b.requestList)
 	if err != nil {
 		return Response{}, err
 	}
-	res, err := tcpSend(c.endpoint, marshal)
+	res, err := tcpSend(b.endpoint, marshal)
 	if err != nil {
 		return Response{}, err
 	}
