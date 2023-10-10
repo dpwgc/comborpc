@@ -25,7 +25,7 @@ func tcpSend(endpoint string, body []byte) ([]byte, error) {
 		}
 	}(conn)
 	bodyLen := len(body)
-	bodyLenBytes := int64ToBytes(int64(bodyLen))
+	bodyLenBytes := int64ToBytes(int64(bodyLen), TCPHeaderLen)
 	// 发送消息头（数据长度）
 	binLen, err := conn.Write(bodyLenBytes)
 	if err != nil {
@@ -164,7 +164,7 @@ func tcpProcess(r *Router, conn net.Conn) error {
 		return err
 	}
 	resultBodyLen := len(resultBody)
-	resultBodyLenBytes := int64ToBytes(int64(resultBodyLen))
+	resultBodyLenBytes := int64ToBytes(int64(resultBodyLen), TCPHeaderLen)
 	// 发送消息头（数据长度）
 	binLen, err := conn.Write(resultBodyLenBytes)
 	if err != nil {

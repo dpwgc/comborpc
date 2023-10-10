@@ -2,8 +2,8 @@ package comborpc
 
 import "encoding/binary"
 
-func int64ToBytes(num int64) []byte {
-	byteArray := make([]byte, TCPHeaderLen)
+func int64ToBytes(num int64, len int) []byte {
+	byteArray := make([]byte, len)
 	binary.LittleEndian.PutUint64(byteArray, uint64(num))
 	return byteArray
 }
