@@ -1,17 +1,19 @@
 package comborpc
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net"
 	"sync"
 )
 
+const TCPHeaderLen int = 8
+
 // tcp发送
-func tcpSend(endpoint string, data []byte) ([]byte, error) {
+func tcpSend(endpoint string, body []byte) ([]byte, error) {
 	conn, err := net.Dial("tcp", endpoint)
 	if err != nil {
 		return nil, err
@@ -22,21 +24,57 @@ func tcpSend(endpoint string, data []byte) ([]byte, error) {
 			log.Println(err)
 		}
 	}(conn)
-	_, err = conn.Write(data)
+	bodyLen := len(body)
+	bodyLenBytes := int64ToBytes(int64(bodyLen))
+	// 发送消息头（数据长度）
+	binLen, err := conn.Write(bodyLenBytes)
 	if err != nil {
 		return nil, err
 	}
-	buf := make([]byte, 1024*1024)
-	n, err := conn.Read(buf)
+	if binLen != TCPHeaderLen {
+		return nil, errors.New("header len not match")
+	}
+	// 发送消息体（数据包）
+	binLen, err = conn.Write(body)
 	if err != nil {
 		return nil, err
 	}
-	return buf[:n], nil
+	if binLen != bodyLen {
+		return nil, errors.New("body len not match")
+	}
+	resultBody, err := tcpRead(conn)
+	if err != nil {
+		return nil, err
+	}
+	return resultBody, nil
+}
+
+func tcpRead(conn net.Conn) ([]byte, error) {
+	// read header
+	header := make([]byte, TCPHeaderLen)
+	binLen, err := conn.Read(header)
+	if err != nil {
+		return nil, err
+	}
+	if binLen != TCPHeaderLen {
+		return nil, errors.New("header len not match")
+	}
+	bodyLen := bytesToInt64(header)
+	// read body
+	body := make([]byte, bodyLen)
+	binLen, err = conn.Read(body)
+	if err != nil {
+		return nil, err
+	}
+	if int64(binLen) != bodyLen {
+		return nil, errors.New("body len not match")
+	}
+	return body, nil
 }
 
 // tcp服务监听
-func tcpListen(s *Router) {
-	server, err := net.Listen("tcp", s.endpoint)
+func tcpListen(r *RPCRouter) {
+	server, err := net.Listen("tcp", r.endpoint)
 	if err != nil {
 		panic(err)
 	}
@@ -47,7 +85,7 @@ func tcpListen(s *Router) {
 		}
 	}(server)
 	for {
-		if s.close {
+		if r.close {
 			break
 		}
 		// 接收tcp数据
@@ -55,7 +93,7 @@ func tcpListen(s *Router) {
 		if err != nil {
 			log.Println(err)
 		}
-		err = tcpProcess(s, conn)
+		err = tcpProcess(r, conn)
 		if err != nil {
 			log.Println(err)
 		}
@@ -63,21 +101,19 @@ func tcpListen(s *Router) {
 }
 
 // tcp处理函数
-func tcpProcess(s *Router, conn net.Conn) error {
+func tcpProcess(r *RPCRouter, conn net.Conn) error {
 	defer func(conn net.Conn) {
 		err := conn.Close()
 		if err != nil {
 			log.Println(err)
 		}
 	}(conn)
-	reader := bufio.NewReader(conn)
-	var buf [1024 * 1024]byte
-	n, err := reader.Read(buf[:]) // 读取数据
+	body, err := tcpRead(conn)
 	if err != nil {
 		return err
 	}
 	var requestList []Request
-	err = json.Unmarshal(buf[:n], &requestList)
+	err = json.Unmarshal(body, &requestList)
 	if err != nil {
 		return err
 	}
@@ -86,15 +122,15 @@ func tcpProcess(s *Router, conn net.Conn) error {
 	wg.Add(len(requestList))
 	for i := 0; i < len(requestList); i++ {
 		responseList = append(responseList, Response{})
-		if s.router[requestList[i].Method] == nil {
+		if r.router[requestList[i].Method] == nil {
 			responseList[i].Error = "no method found"
 			wg.Done()
 			continue
 		}
 		go func(i int) {
-			ctx, cancel := context.WithTimeout(context.TODO(), s.timeout)
+			ctx, cancel := context.WithTimeout(context.TODO(), r.timeout)
 			defer cancel()
-			res := s.router[requestList[i].Method](ctx, requestList[i].Data)
+			res := r.router[requestList[i].Method](ctx, requestList[i].Data)
 			handleErr := recover()
 			if handleErr != nil {
 				responseList[i].Error = fmt.Sprintf("%v", handleErr)

@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-type Router struct {
+type RPCRouter struct {
 	endpoint string
 	router   map[string]func(ctx context.Context, data string) string
 	timeout  time.Duration

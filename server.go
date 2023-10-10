@@ -5,8 +5,10 @@ import (
 	"time"
 )
 
-func NewRouter(endpoint string, timeout time.Duration) *Router {
-	return &Router{
+// NewRPCRouter
+// create a new rpc service route
+func NewRPCRouter(endpoint string, timeout time.Duration) *RPCRouter {
+	return &RPCRouter{
 		endpoint: endpoint,
 		router:   make(map[string]func(ctx context.Context, data string) string),
 		timeout:  timeout,
@@ -14,16 +16,22 @@ func NewRouter(endpoint string, timeout time.Duration) *Router {
 	}
 }
 
-func (s *Router) Add(methodName string, methodFunc func(ctx context.Context, data string) string) *Router {
-	s.router[methodName] = methodFunc
-	return s
+// Add
+// append the processing method to the service route
+func (r *RPCRouter) Add(methodName string, methodFunc func(ctx context.Context, data string) string) *RPCRouter {
+	r.router[methodName] = methodFunc
+	return r
 }
 
-func (s *Router) Listen() {
-	s.close = false
-	go tcpListen(s)
+// Listen
+// start the routing listening service
+func (r *RPCRouter) Listen() {
+	r.close = false
+	go tcpListen(r)
 }
 
-func (s *Router) Close() {
-	s.close = true
+// Close
+// turn off service routing
+func (r *RPCRouter) Close() {
+	r.close = true
 }
