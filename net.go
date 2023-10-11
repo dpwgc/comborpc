@@ -7,13 +7,14 @@ import (
 	"log"
 	"net"
 	"sync"
+	"time"
 )
 
 const TCPHeaderLen int = 8
 
 // tcp发送
-func tcpSend(endpoint string, body []byte) ([]byte, error) {
-	conn, err := net.Dial("tcp", endpoint)
+func tcpSend(endpoint string, body []byte, timeout time.Duration) ([]byte, error) {
+	conn, err := net.DialTimeout("tcp", endpoint, timeout)
 	if err != nil {
 		return nil, err
 	}
@@ -41,11 +42,7 @@ func tcpSend(endpoint string, body []byte) ([]byte, error) {
 	if binLen != bodyLen {
 		return nil, errors.New("body len not match")
 	}
-	resultBody, err := tcpRead(conn)
-	if err != nil {
-		return nil, err
-	}
-	return resultBody, nil
+	return tcpRead(conn)
 }
 
 func tcpRead(conn net.Conn) ([]byte, error) {
@@ -92,6 +89,13 @@ func enableTcpListener(r *Router) {
 		// 接收tcp数据
 		conn, err := server.Accept()
 		if err != nil {
+			return
+		}
+		err = conn.SetDeadline(time.Now().Add(r.timeout))
+		if err != nil {
+			return
+		}
+		if err != nil {
 			if r.close {
 				return
 			}
@@ -104,6 +108,10 @@ func enableTcpListener(r *Router) {
 
 func enableTcpConsumer(r *Router) {
 	for {
+		consumeErr := recover()
+		if consumeErr != nil {
+			log.Println(consumeErr)
+		}
 		conn, ok := <-r.queue
 		if !ok {
 			if r.close {
@@ -129,12 +137,8 @@ func tcpProcess(r *Router, conn net.Conn) error {
 	if err != nil {
 		return err
 	}
-	unZipBody, err := unGzipBytes(body)
-	if err != nil {
-		return err
-	}
 	var requestList []Request
-	err = json.Unmarshal(unZipBody, &requestList)
+	err = json.Unmarshal(body, &requestList)
 	if err != nil {
 		return err
 	}
@@ -164,11 +168,7 @@ func tcpProcess(r *Router, conn net.Conn) error {
 	if err != nil {
 		return err
 	}
-	zipResultBody, err := doGzipBytes(resultBody)
-	if err != nil {
-		return err
-	}
-	resultBodyLen := len(zipResultBody)
+	resultBodyLen := len(resultBody)
 	resultBodyLenBytes := int64ToBytes(int64(resultBodyLen), TCPHeaderLen)
 	// 发送消息头（数据长度）
 	binLen, err := conn.Write(resultBodyLenBytes)
@@ -179,7 +179,7 @@ func tcpProcess(r *Router, conn net.Conn) error {
 		return errors.New("header len not match")
 	}
 	// 发送消息体（数据包）
-	binLen, err = conn.Write(zipResultBody)
+	binLen, err = conn.Write(resultBody)
 	if err != nil {
 		return err
 	}

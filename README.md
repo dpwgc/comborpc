@@ -24,12 +24,12 @@ router.ListenAndServe()
 
 ```
 // 处理方法1
-func testMethod1(ctx context.Context, data string) string {
+func testMethod1(data string) string {
     fmt.Println("testMethod1 request:", data)
     return "hello world 1"
 }
 // 处理方法2
-func testMethod2(ctx context.Context, data string) string {
+func testMethod2(data string) string {
     fmt.Println("testMethod2 request:", data)
     return "hello world 2"
 }
@@ -48,7 +48,7 @@ router.Close()
 
 ```
 // 构建并发送请求
-responseList, err := comborpc.NewComboRequestBuilder("0.0.0.0:8001").AddRequest(comborpc.Request{
+responseList, err := comborpc.NewComboRequestBuilder("0.0.0.0:8001", 1*time.Minute).AddRequest(comborpc.Request{
     Method: "testMethod1",
     Data:   "test request data 1",
 }).AddRequest(comborpc.Request{
@@ -68,7 +68,7 @@ fmt.Println("combo response list:", responseList)
 
 ```
 // 构建并发送请求
-response, err := comborpc.NewSingleRequestBuilder(endpoint).SetRequest(comborpc.Request{
+response, err := comborpc.NewSingleRequestBuilder("0.0.0.0:8001", 1*time.Minute).SetRequest(comborpc.Request{
     Method: "testMethod1",
     Data:   "testData1",
 }).Send()

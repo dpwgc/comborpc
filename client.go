@@ -2,13 +2,15 @@ package comborpc
 
 import (
 	"encoding/json"
+	"time"
 )
 
 // NewComboRequestBuilder
 // create a new composite request builder
-func NewComboRequestBuilder(endpoint string) *ComboRequestBuilder {
+func NewComboRequestBuilder(endpoint string, timeout time.Duration) *ComboRequestBuilder {
 	return &ComboRequestBuilder{
 		endpoint: endpoint,
+		timeout:  timeout,
 	}
 }
 
@@ -26,20 +28,12 @@ func (b *ComboRequestBuilder) Send() ([]Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	zipData, err := doGzipBytes(data)
-	if err != nil {
-		return nil, err
-	}
-	res, err := tcpSend(b.endpoint, zipData)
-	if err != nil {
-		return nil, err
-	}
-	unZipRes, err := unGzipBytes(res)
+	res, err := tcpSend(b.endpoint, data, b.timeout)
 	if err != nil {
 		return nil, err
 	}
 	var resList []Response
-	err = json.Unmarshal(unZipRes, &resList)
+	err = json.Unmarshal(res, &resList)
 	if err != nil {
 		return nil, err
 	}
@@ -48,9 +42,10 @@ func (b *ComboRequestBuilder) Send() ([]Response, error) {
 
 // NewSingleRequestBuilder
 // create a new single request builder
-func NewSingleRequestBuilder(endpoint string) *SingleRequestBuilder {
+func NewSingleRequestBuilder(endpoint string, timeout time.Duration) *SingleRequestBuilder {
 	return &SingleRequestBuilder{
 		endpoint: endpoint,
+		timeout:  timeout,
 	}
 }
 
@@ -72,20 +67,12 @@ func (b *SingleRequestBuilder) Send() (Response, error) {
 	if err != nil {
 		return Response{}, err
 	}
-	zipData, err := doGzipBytes(data)
-	if err != nil {
-		return Response{}, err
-	}
-	res, err := tcpSend(b.endpoint, zipData)
-	if err != nil {
-		return Response{}, err
-	}
-	unZipRes, err := unGzipBytes(res)
+	res, err := tcpSend(b.endpoint, data, b.timeout)
 	if err != nil {
 		return Response{}, err
 	}
 	var resList []Response
-	err = json.Unmarshal(unZipRes, &resList)
+	err = json.Unmarshal(res, &resList)
 	if err != nil {
 		return Response{}, err
 	}

@@ -18,11 +18,13 @@ type Router struct {
 type ComboRequestBuilder struct {
 	endpoint    string
 	requestList []Request
+	timeout     time.Duration
 }
 
 type SingleRequestBuilder struct {
 	endpoint    string
 	requestList []Request
+	timeout     time.Duration
 }
 
 type Request struct {
