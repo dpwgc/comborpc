@@ -57,6 +57,24 @@ func testMiddleware2(ctx *comborpc.Context) {
 }
 ```
 
+### `comborpc.Context`上下文详细用法
+
+* `ReadString`: 从请求体中读取字符串
+
+* `ReadJson`: 从请求体中读取Json格式字符串，将其解析为对象
+
+* `ReadYaml`: 从请求体中读取Yaml格式字符串，将其解析为对象
+
+* `WriteString`: 将字符串写入响应体
+
+* `WriteJson`: 将对象序列化为Json格式字符串，并写入响应体
+
+* `WriteYaml`: 将对象序列化为Yaml格式字符串，并写入响应体
+
+* `Next`: 进入下一个方法（中间件相关）
+
+* `Abort`: 停止继续执行下一个方法（中间件相关）
+
 ### 服务端关闭
 
 ```
@@ -78,6 +96,7 @@ responseList, err := comborpc.NewComboRequestBuilder("0.0.0.0:8001", 1*time.Minu
     Data:   "test request data 2",
 }).Send()
 
+// 抛错
 if err != nil {
     panic(err)
 }
@@ -97,6 +116,7 @@ response, err := comborpc.NewSingleRequestBuilder("0.0.0.0:8001", 1*time.Minute)
     Data:   "testData1",
 }).Send()
 
+// 抛错
 if err != nil {
     panic(err)
 }
