@@ -1,6 +1,8 @@
 package comborpc
 
 import (
+	"encoding/json"
+	"gopkg.in/yaml.v3"
 	"net"
 	"time"
 )
@@ -10,7 +12,7 @@ import (
 func NewRouter(endpoint string, queueLen int, consumerNum int, timeout time.Duration) *Router {
 	return &Router{
 		endpoint:    endpoint,
-		router:      make(map[string]func(data string) string),
+		router:      make(map[string]func(ctx *Context)),
 		queue:       make(chan net.Conn, queueLen),
 		consumerNum: consumerNum,
 		timeout:     timeout,
@@ -20,7 +22,7 @@ func NewRouter(endpoint string, queueLen int, consumerNum int, timeout time.Dura
 
 // AddMethod
 // append the processing method to the service route
-func (r *Router) AddMethod(methodName string, methodFunc func(data string) string) *Router {
+func (r *Router) AddMethod(methodName string, methodFunc func(ctx *Context)) *Router {
 	r.router[methodName] = methodFunc
 	return r
 }
@@ -43,5 +45,39 @@ func (r *Router) Close() error {
 		return err
 	}
 	close(r.queue)
+	return nil
+}
+
+func (c *Context) ReadString() string {
+	return c.input
+}
+
+func (c *Context) ReadJson(obj any) error {
+	return json.Unmarshal([]byte(c.input), obj)
+}
+
+func (c *Context) ReadYaml(obj any) error {
+	return yaml.Unmarshal([]byte(c.input), obj)
+}
+
+func (c *Context) WriteString(data string) {
+	c.output = data
+}
+
+func (c *Context) WriteJson(obj any) error {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return err
+	}
+	c.output = string(data)
+	return nil
+}
+
+func (c *Context) WriteYaml(obj any) error {
+	data, err := yaml.Marshal(obj)
+	if err != nil {
+		return err
+	}
+	c.output = string(data)
 	return nil
 }

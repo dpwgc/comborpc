@@ -24,14 +24,14 @@ router.ListenAndServe()
 
 ```
 // 处理方法1
-func testMethod1(data string) string {
-    fmt.Println("testMethod1 request:", data)
-    return "hello world 1"
+func testMethod1(ctx *comborpc.Context) {
+    fmt.Println("testMethod1 request:", ctx.ReadString())
+    ctx.WriteString("hello world 1")
 }
 // 处理方法2
-func testMethod2(data string) string {
-    fmt.Println("testMethod2 request:", data)
-    return "hello world 2"
+func testMethod2(ctx *comborpc.Context) {
+    fmt.Println("testMethod2 request:", ctx.ReadString())
+    ctx.WriteString("hello world 2")
 }
 ```
 
