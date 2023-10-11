@@ -153,15 +153,25 @@ func tcpProcess(r *Router, conn net.Conn) error {
 			continue
 		}
 		go func(i int) {
-			ctx := Context{
-				input: requestList[i].Data,
+			c := Context{
+				input:   requestList[i].Data,
+				index:   0,
+				methods: r.middlewares,
 			}
-			r.router[requestList[i].Method](&ctx)
 			handleErr := recover()
+			if len(r.middlewares) > 0 {
+				r.middlewares = append(r.middlewares, r.router[requestList[i].Method])
+				for c.index < len(c.methods) {
+					c.methods[c.index](&c)
+					c.index++
+				}
+			} else {
+				r.router[requestList[i].Method](&c)
+			}
 			if handleErr != nil {
 				responseList[i].Error = fmt.Sprintf("%v", handleErr)
 			} else {
-				responseList[i].Data = ctx.output
+				responseList[i].Data = c.output
 			}
 			wg.Done()
 		}(i)

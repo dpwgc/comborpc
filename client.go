@@ -17,14 +17,14 @@ func NewComboRequestBuilder(endpoint string, timeout time.Duration) *ComboReques
 // AddRequest
 // append the request body
 func (b *ComboRequestBuilder) AddRequest(request Request) *ComboRequestBuilder {
-	b.requestList = append(b.requestList, request)
+	b.requests = append(b.requests, request)
 	return b
 }
 
 // Send
 // perform a send operation
 func (b *ComboRequestBuilder) Send() ([]Response, error) {
-	data, err := json.Marshal(b.requestList)
+	data, err := json.Marshal(b.requests)
 	if err != nil {
 		return nil, err
 	}
@@ -52,10 +52,10 @@ func NewSingleRequestBuilder(endpoint string, timeout time.Duration) *SingleRequ
 // SetRequest
 // set a request body
 func (b *SingleRequestBuilder) SetRequest(request Request) *SingleRequestBuilder {
-	if len(b.requestList) == 0 {
-		b.requestList = append(b.requestList, request)
+	if len(b.requests) == 0 {
+		b.requests = append(b.requests, request)
 	} else {
-		b.requestList[0] = request
+		b.requests[0] = request
 	}
 	return b
 }
@@ -63,7 +63,7 @@ func (b *SingleRequestBuilder) SetRequest(request Request) *SingleRequestBuilder
 // Send
 // perform a send operation
 func (b *SingleRequestBuilder) Send() (Response, error) {
-	data, err := json.Marshal(b.requestList)
+	data, err := json.Marshal(b.requests)
 	if err != nil {
 		return Response{}, err
 	}

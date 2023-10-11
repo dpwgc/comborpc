@@ -13,23 +13,26 @@ type Router struct {
 	timeout     time.Duration
 	listener    net.Listener
 	close       bool
+	middlewares []func(ctx *Context)
 }
 
 type Context struct {
-	input  string
-	output string
+	input   string
+	output  string
+	index   int
+	methods []func(ctx *Context)
 }
 
 type ComboRequestBuilder struct {
-	endpoint    string
-	requestList []Request
-	timeout     time.Duration
+	endpoint string
+	requests []Request
+	timeout  time.Duration
 }
 
 type SingleRequestBuilder struct {
-	endpoint    string
-	requestList []Request
-	timeout     time.Duration
+	endpoint string
+	requests []Request
+	timeout  time.Duration
 }
 
 type Request struct {

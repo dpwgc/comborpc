@@ -27,6 +27,11 @@ func (r *Router) AddMethod(methodName string, methodFunc func(ctx *Context)) *Ro
 	return r
 }
 
+func (r *Router) SetMiddlewares(middlewares ...func(ctx *Context)) *Router {
+	r.middlewares = append(r.middlewares, middlewares...)
+	return r
+}
+
 // ListenAndServe
 // start the routing listening service
 func (r *Router) ListenAndServe() {
@@ -46,6 +51,18 @@ func (r *Router) Close() error {
 	}
 	close(r.queue)
 	return nil
+}
+
+func (c *Context) Next() {
+	c.index++
+	for c.index < len(c.methods) {
+		c.methods[c.index](c)
+		c.index++
+	}
+}
+
+func (c *Context) Abort() {
+	c.index = len(c.methods) + 1
 }
 
 func (c *Context) ReadString() string {
