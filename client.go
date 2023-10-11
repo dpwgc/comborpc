@@ -21,6 +21,13 @@ func (b *ComboRequestBuilder) AddRequest(request Request) *ComboRequestBuilder {
 	return b
 }
 
+// AddRequests
+// append the request body
+func (b *ComboRequestBuilder) AddRequests(requests ...Request) *ComboRequestBuilder {
+	b.requests = append(b.requests, requests...)
+	return b
+}
+
 // Send
 // perform a send operation
 func (b *ComboRequestBuilder) Send() ([]Response, error) {

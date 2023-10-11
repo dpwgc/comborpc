@@ -1,6 +1,6 @@
 # ComboRPC
 
-## 基于TCP的简易RPC框架，支持单个请求调用多个方法
+## 基于TCP的简易RPC框架，带中间件功能，支持单个请求调用多个方法
 
 ***
 
@@ -11,16 +11,19 @@
 ```
 // 新建服务路由（地址、缓冲队列长度、队列消费者数量、请求处理超时时间）
 router := comborpc.NewRouter("0.0.0.0:8001", 10000, 100, 30*time.Second)
+
+// 添加中间件（中间件1：testMiddleware1、中间件2：testMiddleware2）
+router.AddMiddlewares(testMiddleware1, testMiddleware2)
+
 // 往服务路由里添加处理方法（处理方法1：testMethod1、处理方法2：testMethod2）
 router.AddMethod("testMethod1", testMethod1)
 router.AddMethod("testMethod2", testMethod2)
+
 // 启动路由监听服务
-router.ListenAndServe()
+router.Run()
 ```
 
 ### 服务端处理方法编写示例
-
-#### 入参：context.Context、string，返回：string
 
 ```
 // 处理方法1
@@ -28,10 +31,29 @@ func testMethod1(ctx *comborpc.Context) {
     fmt.Println("testMethod1 request:", ctx.ReadString())
     ctx.WriteString("hello world 1")
 }
+
 // 处理方法2
 func testMethod2(ctx *comborpc.Context) {
     fmt.Println("testMethod2 request:", ctx.ReadString())
     ctx.WriteString("hello world 2")
+}
+```
+
+### 服务端中间件编写示例
+
+```
+// 中间件1
+func testMiddleware1(ctx *comborpc.Context) {
+    fmt.Println("testMiddleware1 start")
+    ctx.Next()
+    fmt.Println("testMiddleware1 end")
+}
+
+// 中间件2
+func testMiddleware2(ctx *comborpc.Context) {
+    fmt.Println("testMiddleware2 start")
+    ctx.Next()
+    fmt.Println("testMiddleware2 end")
 }
 ```
 
@@ -55,9 +77,11 @@ responseList, err := comborpc.NewComboRequestBuilder("0.0.0.0:8001", 1*time.Minu
     Method: "testMethod2",
     Data:   "test request data 2",
 }).Send()
+
 if err != nil {
     panic(err)
 }
+
 // 响应结果打印
 fmt.Println("combo response list:", responseList)
 ```
@@ -72,9 +96,11 @@ response, err := comborpc.NewSingleRequestBuilder("0.0.0.0:8001", 1*time.Minute)
     Method: "testMethod1",
     Data:   "testData1",
 }).Send()
+
 if err != nil {
     panic(err)
 }
+
 // 响应结果打印
 fmt.Println("single response:", response)
 ```

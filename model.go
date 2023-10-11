@@ -7,20 +7,22 @@ import (
 
 type Router struct {
 	endpoint    string
-	router      map[string]func(ctx *Context)
+	router      map[string]MethodFunc
 	queue       chan net.Conn
 	consumerNum int
 	timeout     time.Duration
 	listener    net.Listener
 	close       bool
-	middlewares []func(ctx *Context)
+	middlewares []MethodFunc
 }
+
+type MethodFunc func(ctx *Context)
 
 type Context struct {
 	input   string
 	output  string
 	index   int
-	methods []func(ctx *Context)
+	methods []MethodFunc
 }
 
 type ComboRequestBuilder struct {

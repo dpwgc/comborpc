@@ -160,7 +160,7 @@ func tcpProcess(r *Router, conn net.Conn) error {
 			}
 			handleErr := recover()
 			if len(r.middlewares) > 0 {
-				r.middlewares = append(r.middlewares, r.router[requestList[i].Method])
+				c.methods = append(c.methods, r.router[requestList[i].Method])
 				for c.index < len(c.methods) {
 					c.methods[c.index](&c)
 					c.index++

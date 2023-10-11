@@ -62,15 +62,29 @@ func Test(t *testing.T) {
 
 func enableTestRouter(endpoint string) {
 	router = comborpc.NewRouter(endpoint, 10000, 100, 30*time.Second).
+		AddMiddlewares(testMiddleware1, testMiddleware2).
 		AddMethod("testMethod1", testMethod1).
 		AddMethod("testMethod2", testMethod2)
-	router.ListenAndServe()
+	router.Run()
+}
+
+func testMiddleware1(ctx *comborpc.Context) {
+	fmt.Println("testMiddleware1 start")
+	ctx.Next()
+	fmt.Println("testMiddleware1 end")
+}
+
+func testMiddleware2(ctx *comborpc.Context) {
+	fmt.Println("testMiddleware2 start")
+	ctx.Next()
+	fmt.Println("testMiddleware2 end")
 }
 
 func testMethod1(ctx *comborpc.Context) {
 	fmt.Println("testMethod1 request:", ctx.ReadString())
 	ctx.WriteString("hello world 1")
 }
+
 func testMethod2(ctx *comborpc.Context) {
 	fmt.Println("testMethod2 request:", ctx.ReadString())
 	ctx.WriteString("hello world 2")

@@ -12,7 +12,7 @@ import (
 func NewRouter(endpoint string, queueLen int, consumerNum int, timeout time.Duration) *Router {
 	return &Router{
 		endpoint:    endpoint,
-		router:      make(map[string]func(ctx *Context)),
+		router:      make(map[string]MethodFunc),
 		queue:       make(chan net.Conn, queueLen),
 		consumerNum: consumerNum,
 		timeout:     timeout,
@@ -22,19 +22,28 @@ func NewRouter(endpoint string, queueLen int, consumerNum int, timeout time.Dura
 
 // AddMethod
 // append the processing method to the service route
-func (r *Router) AddMethod(methodName string, methodFunc func(ctx *Context)) *Router {
+func (r *Router) AddMethod(methodName string, methodFunc MethodFunc) *Router {
 	r.router[methodName] = methodFunc
 	return r
 }
 
-func (r *Router) SetMiddlewares(middlewares ...func(ctx *Context)) *Router {
+// AddMiddleware
+// append the middleware
+func (r *Router) AddMiddleware(middleware MethodFunc) *Router {
+	r.middlewares = append(r.middlewares, middleware)
+	return r
+}
+
+// AddMiddlewares
+// append the middleware
+func (r *Router) AddMiddlewares(middlewares ...MethodFunc) *Router {
 	r.middlewares = append(r.middlewares, middlewares...)
 	return r
 }
 
-// ListenAndServe
+// Run
 // start the routing listening service
-func (r *Router) ListenAndServe() {
+func (r *Router) Run() {
 	go enableTcpListener(r)
 	for i := 0; i < r.consumerNum; i++ {
 		go enableTcpConsumer(r)
@@ -53,6 +62,8 @@ func (r *Router) Close() error {
 	return nil
 }
 
+// Next
+// go to the next processing method
 func (c *Context) Next() {
 	c.index++
 	for c.index < len(c.methods) {
@@ -61,6 +72,8 @@ func (c *Context) Next() {
 	}
 }
 
+// Abort
+// stop continuing down execution
 func (c *Context) Abort() {
 	c.index = len(c.methods) + 1
 }
