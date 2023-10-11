@@ -5,10 +5,18 @@ import (
 	"time"
 )
 
+type connect struct {
+	object net.Conn
+}
+
+type bgService struct {
+	object *Router
+}
+
 type Router struct {
 	endpoint    string
 	router      map[string]MethodFunc
-	queue       chan net.Conn
+	queue       chan *connect
 	consumerNum int
 	timeout     time.Duration
 	listener    net.Listener

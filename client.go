@@ -35,7 +35,12 @@ func (b *ComboRequestBuilder) Send() ([]Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	res, err := tcpSend(b.endpoint, data, b.timeout)
+	c, err := newConnect(b.endpoint, b.timeout)
+	if err != nil {
+		return nil, err
+	}
+	defer c.close()
+	res, err := c.sendAndGetResponse(data)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +79,12 @@ func (b *SingleRequestBuilder) Send() (Response, error) {
 	if err != nil {
 		return Response{}, err
 	}
-	res, err := tcpSend(b.endpoint, data, b.timeout)
+	c, err := newConnect(b.endpoint, b.timeout)
+	if err != nil {
+		return Response{}, err
+	}
+	defer c.close()
+	res, err := c.sendAndGetResponse(data)
 	if err != nil {
 		return Response{}, err
 	}

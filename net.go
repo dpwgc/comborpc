@@ -12,22 +12,28 @@ import (
 
 const TCPHeaderLen int = 8
 
-// tcp发送
-func tcpSend(endpoint string, body []byte, timeout time.Duration) ([]byte, error) {
+func newConnect(endpoint string, timeout time.Duration) (*connect, error) {
 	conn, err := net.DialTimeout("tcp", endpoint, timeout)
 	if err != nil {
 		return nil, err
 	}
-	defer func(conn net.Conn) {
-		err = conn.Close()
-		if err != nil {
-			log.Println(err)
-		}
-	}(conn)
+	return &connect{
+		object: conn,
+	}, nil
+}
+
+func convertedConnect(conn net.Conn) *connect {
+	return &connect{
+		object: conn,
+	}
+}
+
+// tcp请求发送，并获取响应结果
+func (c *connect) sendAndGetResponse(body []byte) ([]byte, error) {
 	bodyLen := len(body)
 	bodyLenBytes := int64ToBytes(int64(bodyLen), TCPHeaderLen)
 	// 发送消息头（数据长度）
-	binLen, err := conn.Write(bodyLenBytes)
+	binLen, err := c.object.Write(bodyLenBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -35,20 +41,43 @@ func tcpSend(endpoint string, body []byte, timeout time.Duration) ([]byte, error
 		return nil, errors.New("header len not match")
 	}
 	// 发送消息体（数据包）
-	binLen, err = conn.Write(body)
+	binLen, err = c.object.Write(body)
 	if err != nil {
 		return nil, err
 	}
 	if binLen != bodyLen {
 		return nil, errors.New("body len not match")
 	}
-	return tcpRead(conn)
+	return c.read()
 }
 
-func tcpRead(conn net.Conn) ([]byte, error) {
+// tcp请求发送
+func (c *connect) send(body []byte) error {
+	bodyLen := len(body)
+	bodyLenBytes := int64ToBytes(int64(bodyLen), TCPHeaderLen)
+	// 发送消息头（数据长度）
+	binLen, err := c.object.Write(bodyLenBytes)
+	if err != nil {
+		return err
+	}
+	if binLen != TCPHeaderLen {
+		return errors.New("header len not match")
+	}
+	// 发送消息体（数据包）
+	binLen, err = c.object.Write(body)
+	if err != nil {
+		return err
+	}
+	if binLen != bodyLen {
+		return errors.New("body len not match")
+	}
+	return nil
+}
+
+func (c *connect) read() ([]byte, error) {
 	// read header
 	header := make([]byte, TCPHeaderLen)
-	binLen, err := conn.Read(header)
+	binLen, err := c.object.Read(header)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +87,7 @@ func tcpRead(conn net.Conn) ([]byte, error) {
 	bodyLen := bytesToInt64(header)
 	// read body
 	body := make([]byte, bodyLen)
-	binLen, err = conn.Read(body)
+	binLen, err = c.object.Read(body)
 	if err != nil {
 		return nil, err
 	}
@@ -68,72 +97,80 @@ func tcpRead(conn net.Conn) ([]byte, error) {
 	return body, nil
 }
 
+func (c *connect) close() {
+	err := c.object.Close()
+	if err != nil {
+		log.Println(err)
+	}
+}
+
+func newBgService(r *Router) *bgService {
+	return &bgService{
+		object: r,
+	}
+}
+
 // tcp服务监听
-func enableTcpListener(r *Router) {
-	server, err := net.Listen("tcp", r.endpoint)
+func (s *bgService) enableListener() {
+	server, err := net.Listen("tcp", s.object.endpoint)
 	if err != nil {
 		panic(err)
 	}
 	defer func(server net.Listener) {
-		if r.close {
+		if s.object.close {
 			return
 		}
 		err = server.Close()
-		r.close = true
+		s.object.close = true
 		if err != nil {
 			panic(err)
 		}
 	}(server)
-	r.listener = server
+	s.object.listener = server
 	for {
 		// 接收tcp数据
 		conn, err := server.Accept()
 		if err != nil {
-			return
-		}
-		err = conn.SetDeadline(time.Now().Add(r.timeout))
-		if err != nil {
-			return
-		}
-		if err != nil {
-			if r.close {
+			if s.object.close {
 				return
 			}
 			log.Println(err)
-		} else {
-			r.queue <- conn
+			continue
 		}
+		err = conn.SetDeadline(time.Now().Add(s.object.timeout))
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		s.object.queue <- convertedConnect(conn)
 	}
 }
 
-func enableTcpConsumer(r *Router) {
+func (s *bgService) enableConsumer() {
 	for {
-		consumeErr := recover()
-		if consumeErr != nil {
-			log.Println(consumeErr)
+		c, ok := <-s.object.queue
+		if !ok && s.object.close {
+			return
 		}
-		conn, ok := <-r.queue
-		if !ok {
-			if r.close {
-				return
+		func(c *connect) {
+			defer func() {
+				catchErr := recover()
+				if catchErr != nil {
+					log.Println(catchErr)
+				}
+			}()
+			err := s.processConnect(c)
+			if err != nil {
+				log.Println(err)
 			}
-		}
-		err := tcpProcess(r, conn)
-		if err != nil {
-			log.Println(err)
-		}
+		}(c)
 	}
 }
 
 // tcp处理函数
-func tcpProcess(r *Router, conn net.Conn) error {
-	defer func(conn net.Conn) {
-		err := conn.Close()
-		if err != nil {
-			log.Println(err)
-		}
-	}(conn)
-	body, err := tcpRead(conn)
+func (s *bgService) processConnect(c *connect) error {
+	defer c.close()
+	body, err := c.read()
 	if err != nil {
 		return err
 	}
@@ -147,33 +184,34 @@ func tcpProcess(r *Router, conn net.Conn) error {
 	wg.Add(len(requestList))
 	for i := 0; i < len(requestList); i++ {
 		responseList = append(responseList, Response{})
-		if r.router[requestList[i].Method] == nil {
+		if s.object.router[requestList[i].Method] == nil {
 			responseList[i].Error = "no method found"
 			wg.Done()
 			continue
 		}
 		go func(i int) {
-			c := Context{
+			defer func() {
+				handleErr := recover()
+				if handleErr != nil {
+					responseList[i].Error = fmt.Sprintf("%v", handleErr)
+				}
+				wg.Done()
+			}()
+			ctx := Context{
 				input:   requestList[i].Data,
 				index:   0,
-				methods: r.middlewares,
+				methods: s.object.middlewares,
 			}
-			handleErr := recover()
-			if len(r.middlewares) > 0 {
-				c.methods = append(c.methods, r.router[requestList[i].Method])
-				for c.index < len(c.methods) {
-					c.methods[c.index](&c)
-					c.index++
+			if len(s.object.middlewares) > 0 {
+				ctx.methods = append(ctx.methods, s.object.router[requestList[i].Method])
+				for ctx.index < len(ctx.methods) {
+					ctx.methods[ctx.index](&ctx)
+					ctx.index++
 				}
 			} else {
-				r.router[requestList[i].Method](&c)
+				s.object.router[requestList[i].Method](&ctx)
 			}
-			if handleErr != nil {
-				responseList[i].Error = fmt.Sprintf("%v", handleErr)
-			} else {
-				responseList[i].Data = c.output
-			}
-			wg.Done()
+			responseList[i].Data = ctx.output
 		}(i)
 	}
 	wg.Wait()
@@ -181,23 +219,5 @@ func tcpProcess(r *Router, conn net.Conn) error {
 	if err != nil {
 		return err
 	}
-	resultBodyLen := len(resultBody)
-	resultBodyLenBytes := int64ToBytes(int64(resultBodyLen), TCPHeaderLen)
-	// 发送消息头（数据长度）
-	binLen, err := conn.Write(resultBodyLenBytes)
-	if err != nil {
-		return err
-	}
-	if binLen != TCPHeaderLen {
-		return errors.New("header len not match")
-	}
-	// 发送消息体（数据包）
-	binLen, err = conn.Write(resultBody)
-	if err != nil {
-		return err
-	}
-	if binLen != resultBodyLen {
-		return errors.New("body len not match")
-	}
-	return nil
+	return c.send(resultBody)
 }

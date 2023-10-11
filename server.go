@@ -3,7 +3,6 @@ package comborpc
 import (
 	"encoding/json"
 	"gopkg.in/yaml.v3"
-	"net"
 	"time"
 )
 
@@ -13,7 +12,7 @@ func NewRouter(endpoint string, queueLen int, consumerNum int, timeout time.Dura
 	return &Router{
 		endpoint:    endpoint,
 		router:      make(map[string]MethodFunc),
-		queue:       make(chan net.Conn, queueLen),
+		queue:       make(chan *connect, queueLen),
 		consumerNum: consumerNum,
 		timeout:     timeout,
 		close:       false,
@@ -44,9 +43,10 @@ func (r *Router) AddMiddlewares(middlewares ...MethodFunc) *Router {
 // Run
 // start the routing listening service
 func (r *Router) Run() {
-	go enableTcpListener(r)
+	bg := newBgService(r)
+	go bg.enableListener()
 	for i := 0; i < r.consumerNum; i++ {
-		go enableTcpConsumer(r)
+		go bg.enableConsumer()
 	}
 }
 
