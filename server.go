@@ -1,7 +1,6 @@
 package comborpc
 
 import (
-	"context"
 	"net"
 	"time"
 )
@@ -11,7 +10,7 @@ import (
 func NewRouter(endpoint string, queueLen int, consumerNum int, timeout time.Duration) *Router {
 	return &Router{
 		endpoint:    endpoint,
-		router:      make(map[string]func(ctx context.Context, data string) string),
+		router:      make(map[string]func(data string) string),
 		queue:       make(chan net.Conn, queueLen),
 		consumerNum: consumerNum,
 		timeout:     timeout,
@@ -21,7 +20,7 @@ func NewRouter(endpoint string, queueLen int, consumerNum int, timeout time.Dura
 
 // AddMethod
 // append the processing method to the service route
-func (r *Router) AddMethod(methodName string, methodFunc func(ctx context.Context, data string) string) *Router {
+func (r *Router) AddMethod(methodName string, methodFunc func(data string) string) *Router {
 	r.router[methodName] = methodFunc
 	return r
 }

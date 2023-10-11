@@ -22,16 +22,24 @@ func (b *ComboRequestBuilder) AddRequest(request Request) *ComboRequestBuilder {
 // Send
 // perform a send operation
 func (b *ComboRequestBuilder) Send() ([]Response, error) {
-	marshal, err := json.Marshal(b.requestList)
+	data, err := json.Marshal(b.requestList)
 	if err != nil {
 		return nil, err
 	}
-	res, err := tcpSend(b.endpoint, marshal)
+	zipData, err := doGzipBytes(data)
+	if err != nil {
+		return nil, err
+	}
+	res, err := tcpSend(b.endpoint, zipData)
+	if err != nil {
+		return nil, err
+	}
+	unZipRes, err := unGzipBytes(res)
 	if err != nil {
 		return nil, err
 	}
 	var resList []Response
-	err = json.Unmarshal(res, &resList)
+	err = json.Unmarshal(unZipRes, &resList)
 	if err != nil {
 		return nil, err
 	}
@@ -60,16 +68,24 @@ func (b *SingleRequestBuilder) SetRequest(request Request) *SingleRequestBuilder
 // Send
 // perform a send operation
 func (b *SingleRequestBuilder) Send() (Response, error) {
-	marshal, err := json.Marshal(b.requestList)
+	data, err := json.Marshal(b.requestList)
 	if err != nil {
 		return Response{}, err
 	}
-	res, err := tcpSend(b.endpoint, marshal)
+	zipData, err := doGzipBytes(data)
+	if err != nil {
+		return Response{}, err
+	}
+	res, err := tcpSend(b.endpoint, zipData)
+	if err != nil {
+		return Response{}, err
+	}
+	unZipRes, err := unGzipBytes(res)
 	if err != nil {
 		return Response{}, err
 	}
 	var resList []Response
-	err = json.Unmarshal(res, &resList)
+	err = json.Unmarshal(unZipRes, &resList)
 	if err != nil {
 		return Response{}, err
 	}

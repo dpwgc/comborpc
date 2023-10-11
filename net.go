@@ -1,7 +1,6 @@
 package comborpc
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -130,8 +129,12 @@ func tcpProcess(r *Router, conn net.Conn) error {
 	if err != nil {
 		return err
 	}
+	unZipBody, err := unGzipBytes(body)
+	if err != nil {
+		return err
+	}
 	var requestList []Request
-	err = json.Unmarshal(body, &requestList)
+	err = json.Unmarshal(unZipBody, &requestList)
 	if err != nil {
 		return err
 	}
@@ -146,9 +149,7 @@ func tcpProcess(r *Router, conn net.Conn) error {
 			continue
 		}
 		go func(i int) {
-			ctx, cancel := context.WithTimeout(context.TODO(), r.timeout)
-			defer cancel()
-			res := r.router[requestList[i].Method](ctx, requestList[i].Data)
+			res := r.router[requestList[i].Method](requestList[i].Data)
 			handleErr := recover()
 			if handleErr != nil {
 				responseList[i].Error = fmt.Sprintf("%v", handleErr)
@@ -163,7 +164,11 @@ func tcpProcess(r *Router, conn net.Conn) error {
 	if err != nil {
 		return err
 	}
-	resultBodyLen := len(resultBody)
+	zipResultBody, err := doGzipBytes(resultBody)
+	if err != nil {
+		return err
+	}
+	resultBodyLen := len(zipResultBody)
 	resultBodyLenBytes := int64ToBytes(int64(resultBodyLen), TCPHeaderLen)
 	// 发送消息头（数据长度）
 	binLen, err := conn.Write(resultBodyLenBytes)
@@ -174,16 +179,12 @@ func tcpProcess(r *Router, conn net.Conn) error {
 		return errors.New("header len not match")
 	}
 	// 发送消息体（数据包）
-	binLen, err = conn.Write(resultBody)
+	binLen, err = conn.Write(zipResultBody)
 	if err != nil {
 		return err
 	}
 	if binLen != resultBodyLen {
 		return errors.New("body len not match")
-	}
-	_, err = conn.Write(resultBody)
-	if err != nil {
-		return err
 	}
 	return nil
 }

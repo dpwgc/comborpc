@@ -1,7 +1,6 @@
 package test
 
 import (
-	"context"
 	"fmt"
 	"github.com/dpwgc/comborpc"
 	"testing"
@@ -68,11 +67,11 @@ func enableTestRouter(endpoint string) {
 	router.ListenAndServe()
 }
 
-func testMethod1(ctx context.Context, data string) string {
+func testMethod1(data string) string {
 	fmt.Println("testMethod1 request:", data)
 	return "hello world 1"
 }
-func testMethod2(ctx context.Context, data string) string {
+func testMethod2(data string) string {
 	fmt.Println("testMethod2 request:", data)
 	return "hello world 2"
 }
