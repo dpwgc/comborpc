@@ -41,10 +41,10 @@ func (r *Router) AddMiddlewares(middlewares ...MethodFunc) *Router {
 // Run
 // start the routing listening service
 func (r *Router) Run() {
-	bg := newBgService(r)
-	go bg.enableListener()
+	s := newTcpServe(r)
+	go s.enableListener()
 	for i := 0; i < r.consumerNum; i++ {
-		go bg.enableConsumer()
+		go s.enableConsumer()
 	}
 }
 

@@ -81,7 +81,7 @@ func (c *tcpConnect) close() {
 	}
 }
 
-func newBgService(r *Router) *tcpServe {
+func newTcpServe(r *Router) *tcpServe {
 	return &tcpServe{
 		router: r,
 	}
