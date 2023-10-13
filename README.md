@@ -1,6 +1,6 @@
 # ComboRPC
 
-## 基于TCP的简易RPC框架，带中间件功能，支持单个请求调用多个方法
+## 基于TCP的简易RPC框架，带中间件功能，支持单个请求调用多个方法，支持负载均衡
 
 ***
 
@@ -14,6 +14,16 @@
 ***
 
 ## 使用方式
+
+### 导入包
+
+```
+go get github.com/dpwgc/comborpc
+```
+
+```
+import "github.com/dpwgc/comborpc"
+```
 
 ### 服务端路由启动
 
@@ -105,7 +115,10 @@ router.Close()
 ```
 func demoComboRequest() {
     // 构建并发送请求
-    responseList, err := comborpc.NewComboRequestClient("0.0.0.0:8001", 1*time.Minute).AddRequest(comborpc.Request{
+    responseList, err := comborpc.NewComboRequestClient().
+    SetEndpoints("0.0.0.0:8001").
+	SetTimeout(1 * time.Minute).
+    AddRequest(comborpc.Request{
         Method: "testMethod1",
         Data:   "test request data 1",
     }).AddRequest(comborpc.Request{
@@ -130,7 +143,10 @@ func demoComboRequest() {
 ```
 func demoSingleRequest() {
     // 构建并发送请求
-    response, err := comborpc.NewSingleRequestClient("0.0.0.0:8001", 1*time.Minute).SetRequest(comborpc.Request{
+    response, err := comborpc.NewSingleRequestClient().
+    SetEndpoints("0.0.0.0:8001").
+	SetTimeout(1 * time.Minute).
+    SetRequest(comborpc.Request{
         Method: "testMethod1",
         Data:   "testData1",
     }).Do()
@@ -148,23 +164,24 @@ func demoSingleRequest() {
 ### 客户端方法列表
 
 * `ComboRequestClient`: 组合请求客户端
+  * `SetEndpoints`: 设置服务端地址（支持配置多个服务端地址，发送请求时随机选择其中一个地址）
+  * `SetTimeout`: 设置请求超时时间
   * `AddRequest`: 添加请求体
   * `AddRequests`: 添加多个请求体
   * `AddStringRequest`: 添加请求体（传入普通字符串）
   * `AddJsonRequest`: 添加请求体（将传入对象序列化成Json字符串）
   * `AddYamlRequest`: 添加请求体（将传入对象序列化成Yaml字符串）
   * `AddXmlRequest`: 添加请求体（将传入对象序列化成Xml字符串）
-  * `EditEndpoint`: 修改服务端地址
-  * `EditTimeout`: 修改请求超时时间
   * `Do`: 执行请求
+  * `ClearRequests`: 清除之前传入的所有请求体
 * `SingleRequestClient`: 单一请求客户端
+  * `SetEndpoints`: 设置服务端地址（支持配置多个服务端地址，发送请求时随机选择其中一个地址）
+  * `SetTimeout`: 设置请求超时时间
   * `SetRequest`: 设置请求体
   * `SetStringRequest`: 设置请求体（传入普通字符串）
   * `SetJsonRequest`: 设置请求体（将传入对象序列化成Json字符串）
   * `SetYamlRequest`: 设置请求体（将传入对象序列化成Yaml字符串）
   * `SetXmlRequest`: 设置请求体（将传入对象序列化成Xml字符串）
-  * `EditEndpoint`: 修改服务端地址
-  * `EditTimeout`: 修改请求超时时间
   * `Do`: 执行请求
 * `Response`: 响应体
   * `ParseJson`: 将Json字符串格式的响应数据解析为对象

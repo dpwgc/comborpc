@@ -6,24 +6,22 @@ import (
 	"errors"
 	"fmt"
 	"gopkg.in/yaml.v3"
+	"math/rand"
 	"time"
 )
 
 // NewComboRequestClient
 // create a new composite request client
-func NewComboRequestClient(endpoint string, timeout time.Duration) *ComboRequestClient {
-	return &ComboRequestClient{
-		endpoint: endpoint,
-		timeout:  timeout,
-	}
+func NewComboRequestClient() *ComboRequestClient {
+	return &ComboRequestClient{}
 }
 
-func (c *ComboRequestClient) EditEndpoint(endpoint string) *ComboRequestClient {
-	c.endpoint = endpoint
+func (c *ComboRequestClient) SetEndpoints(endpoints ...string) *ComboRequestClient {
+	c.endpoints = endpoints
 	return c
 }
 
-func (c *ComboRequestClient) EditTimeout(timeout time.Duration) *ComboRequestClient {
+func (c *ComboRequestClient) SetTimeout(timeout time.Duration) *ComboRequestClient {
 	c.timeout = timeout
 	return c
 }
@@ -81,11 +79,14 @@ func (c *ComboRequestClient) AddRequests(requests ...Request) *ComboRequestClien
 // Do
 // perform a send operation
 func (c *ComboRequestClient) Do() ([]Response, error) {
+	if len(c.endpoints) == 0 {
+		return nil, errors.New("endpoints len = 0")
+	}
 	data, err := json.Marshal(c.requests)
 	if err != nil {
 		return nil, err
 	}
-	res, err := tcpRequest(c.endpoint, c.timeout, data)
+	res, err := tcpRequest(loadBalancing(c.endpoints), c.timeout, data)
 	if err != nil {
 		return nil, err
 	}
@@ -97,21 +98,25 @@ func (c *ComboRequestClient) Do() ([]Response, error) {
 	return resList, nil
 }
 
-// NewSingleRequestClient
-// create a new single request client
-func NewSingleRequestClient(endpoint string, timeout time.Duration) *SingleRequestClient {
-	return &SingleRequestClient{
-		endpoint: endpoint,
-		timeout:  timeout,
-	}
-}
-
-func (c *SingleRequestClient) EditEndpoint(endpoint string) *SingleRequestClient {
-	c.endpoint = endpoint
+// ClearRequests
+// clear all request
+func (c *ComboRequestClient) ClearRequests() *ComboRequestClient {
+	c.requests = nil
 	return c
 }
 
-func (c *SingleRequestClient) EditTimeout(timeout time.Duration) *SingleRequestClient {
+// NewSingleRequestClient
+// create a new single request client
+func NewSingleRequestClient() *SingleRequestClient {
+	return &SingleRequestClient{}
+}
+
+func (c *SingleRequestClient) SetEndpoints(endpoints ...string) *SingleRequestClient {
+	c.endpoints = endpoints
+	return c
+}
+
+func (c *SingleRequestClient) SetTimeout(timeout time.Duration) *SingleRequestClient {
 	c.timeout = timeout
 	return c
 }
@@ -166,11 +171,14 @@ func (c *SingleRequestClient) SetXmlRequest(method string, v any) *SingleRequest
 // Do
 // perform a send operation
 func (c *SingleRequestClient) Do() (Response, error) {
+	if len(c.endpoints) == 0 {
+		return Response{}, errors.New("endpoints len = 0")
+	}
 	data, err := json.Marshal(c.requests)
 	if err != nil {
 		return Response{}, err
 	}
-	res, err := tcpRequest(c.endpoint, c.timeout, data)
+	res, err := tcpRequest(loadBalancing(c.endpoints), c.timeout, data)
 	if err != nil {
 		return Response{}, err
 	}
@@ -204,7 +212,18 @@ func (r *Response) ParseXml(v any) error {
 	return xml.Unmarshal([]byte(r.Data), v)
 }
 
+func loadBalancing(endpoints []string) string {
+	rand.Seed(time.Now().Unix())
+	return endpoints[rand.Intn(len(endpoints))]
+}
+
 func tcpRequest(endpoint string, timeout time.Duration, data []byte) ([]byte, error) {
+	if timeout.Milliseconds() < 1 {
+		timeout = 1 * time.Minute
+	}
+	if len(endpoint) == 0 {
+		return nil, errors.New("endpoint nil")
+	}
 	c, err := newConnect(endpoint, timeout)
 	if err != nil {
 		return nil, err

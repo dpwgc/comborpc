@@ -7,6 +7,9 @@ import (
 // NewRouter
 // create a new rpc service route
 func NewRouter(endpoint string, queueLen int, consumerNum int, timeout time.Duration) *Router {
+	if timeout.Milliseconds() < 1 {
+		timeout = 1 * time.Minute
+	}
 	return &Router{
 		endpoint:    endpoint,
 		router:      make(map[string]MethodFunc),

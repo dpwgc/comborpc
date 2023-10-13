@@ -34,15 +34,15 @@ type Context struct {
 }
 
 type ComboRequestClient struct {
-	endpoint string
-	requests []Request
-	timeout  time.Duration
+	endpoints []string
+	requests  []Request
+	timeout   time.Duration
 }
 
 type SingleRequestClient struct {
-	endpoint string
-	requests []Request
-	timeout  time.Duration
+	endpoints []string
+	requests  []Request
+	timeout   time.Duration
 }
 
 type Request struct {
