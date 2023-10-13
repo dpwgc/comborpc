@@ -88,13 +88,13 @@ router.Close()
 
 ```
 // 构建并发送请求
-responseList, err := comborpc.NewComboRequestBuilder("0.0.0.0:8001", 1*time.Minute).AddRequest(comborpc.Request{
+responseList, err := comborpc.NewComboRequestClient("0.0.0.0:8001", 1*time.Minute).AddRequest(comborpc.Request{
     Method: "testMethod1",
     Data:   "test request data 1",
 }).AddRequest(comborpc.Request{
     Method: "testMethod2",
     Data:   "test request data 2",
-}).Send()
+}).Do()
 
 // 抛错
 if err != nil {
@@ -111,10 +111,10 @@ fmt.Println("combo response list:", responseList)
 
 ```
 // 构建并发送请求
-response, err := comborpc.NewSingleRequestBuilder("0.0.0.0:8001", 1*time.Minute).SetRequest(comborpc.Request{
+response, err := comborpc.NewSingleRequestClient("0.0.0.0:8001", 1*time.Minute).SetRequest(comborpc.Request{
     Method: "testMethod1",
     Data:   "testData1",
-}).Send()
+}).Do()
 
 // 抛错
 if err != nil {

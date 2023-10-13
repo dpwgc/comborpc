@@ -1,8 +1,6 @@
 package comborpc
 
 import (
-	"encoding/json"
-	"gopkg.in/yaml.v3"
 	"time"
 )
 
@@ -12,7 +10,7 @@ func NewRouter(endpoint string, queueLen int, consumerNum int, timeout time.Dura
 	return &Router{
 		endpoint:    endpoint,
 		router:      make(map[string]MethodFunc),
-		queue:       make(chan *connect, queueLen),
+		queue:       make(chan *tcpConnect, queueLen),
 		consumerNum: consumerNum,
 		timeout:     timeout,
 		close:       false,
@@ -59,55 +57,5 @@ func (r *Router) Close() error {
 		return err
 	}
 	close(r.queue)
-	return nil
-}
-
-// Next
-// go to the next processing method
-func (c *Context) Next() {
-	c.index++
-	for c.index < len(c.methods) {
-		c.methods[c.index](c)
-		c.index++
-	}
-}
-
-// Abort
-// stop continuing down execution
-func (c *Context) Abort() {
-	c.index = len(c.methods) + 1
-}
-
-func (c *Context) ReadString() string {
-	return c.input
-}
-
-func (c *Context) ReadJson(obj any) error {
-	return json.Unmarshal([]byte(c.input), obj)
-}
-
-func (c *Context) ReadYaml(obj any) error {
-	return yaml.Unmarshal([]byte(c.input), obj)
-}
-
-func (c *Context) WriteString(data string) {
-	c.output = data
-}
-
-func (c *Context) WriteJson(obj any) error {
-	data, err := json.Marshal(obj)
-	if err != nil {
-		return err
-	}
-	c.output = string(data)
-	return nil
-}
-
-func (c *Context) WriteYaml(obj any) error {
-	data, err := yaml.Marshal(obj)
-	if err != nil {
-		return err
-	}
-	c.output = string(data)
 	return nil
 }

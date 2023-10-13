@@ -20,7 +20,7 @@ func Test(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	fmt.Println("-----\n3. send combo request")
-	responseList, err := comborpc.NewComboRequestBuilder(endpoint, 1*time.Minute).
+	responseList, err := comborpc.NewComboRequestClient(endpoint, 1*time.Minute).
 		AddRequest(comborpc.Request{
 			Method: "testMethod1",
 			Data:   "test request data 1",
@@ -28,7 +28,7 @@ func Test(t *testing.T) {
 		AddRequest(comborpc.Request{
 			Method: "testMethod2",
 			Data:   "test request data 2",
-		}).Send()
+		}).Do()
 	if err != nil {
 		panic(err)
 	}
@@ -37,11 +37,11 @@ func Test(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	fmt.Println("-----\n4. send single request")
-	response, err := comborpc.NewSingleRequestBuilder(endpoint, 1*time.Minute).
+	response, err := comborpc.NewSingleRequestClient(endpoint, 1*time.Minute).
 		SetRequest(comborpc.Request{
 			Method: "testMethod1",
 			Data:   "testData1",
-		}).Send()
+		}).Do()
 	if err != nil {
 		panic(err)
 	}

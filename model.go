@@ -5,18 +5,18 @@ import (
 	"time"
 )
 
-type connect struct {
-	object net.Conn
+type tcpConnect struct {
+	conn net.Conn
 }
 
-type bgService struct {
-	object *Router
+type tcpServe struct {
+	router *Router
 }
 
 type Router struct {
 	endpoint    string
 	router      map[string]MethodFunc
-	queue       chan *connect
+	queue       chan *tcpConnect
 	consumerNum int
 	timeout     time.Duration
 	listener    net.Listener
@@ -33,13 +33,13 @@ type Context struct {
 	methods []MethodFunc
 }
 
-type ComboRequestBuilder struct {
+type ComboRequestClient struct {
 	endpoint string
 	requests []Request
 	timeout  time.Duration
 }
 
-type SingleRequestBuilder struct {
+type SingleRequestClient struct {
 	endpoint string
 	requests []Request
 	timeout  time.Duration
