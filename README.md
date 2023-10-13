@@ -117,7 +117,7 @@ func demoComboRequest() {
     // 构建并发送请求
     responseList, err := comborpc.NewComboRequestClient().
     SetEndpoints("0.0.0.0:8001").
-	SetTimeout(1 * time.Minute).
+    SetTimeout(1 * time.Minute).
     AddRequest(comborpc.Request{
         Method: "testMethod1",
         Data:   "test request data 1",
@@ -145,7 +145,7 @@ func demoSingleRequest() {
     // 构建并发送请求
     response, err := comborpc.NewSingleRequestClient().
     SetEndpoints("0.0.0.0:8001").
-	SetTimeout(1 * time.Minute).
+    SetTimeout(1 * time.Minute).
     SetRequest(comborpc.Request{
         Method: "testMethod1",
         Data:   "testData1",
