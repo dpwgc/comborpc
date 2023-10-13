@@ -85,7 +85,7 @@ func (c *ComboRequestClient) Do() ([]Response, error) {
 	if len(c.endpoints) == 0 {
 		return nil, errors.New("endpoints len = 0")
 	}
-	data, err := json.Marshal(c.requests)
+	data, err := yaml.Marshal(c.requests)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +94,7 @@ func (c *ComboRequestClient) Do() ([]Response, error) {
 		return nil, err
 	}
 	var resList []Response
-	err = json.Unmarshal(res, &resList)
+	err = yaml.Unmarshal(res, &resList)
 	if err != nil {
 		return nil, err
 	}
@@ -180,7 +180,7 @@ func (c *SingleRequestClient) Do() (Response, error) {
 	if len(c.endpoints) == 0 {
 		return Response{}, errors.New("endpoints len = 0")
 	}
-	data, err := json.Marshal(c.requests)
+	data, err := yaml.Marshal(c.requests)
 	if err != nil {
 		return Response{}, err
 	}
@@ -189,7 +189,7 @@ func (c *SingleRequestClient) Do() (Response, error) {
 		return Response{}, err
 	}
 	var resList []Response
-	err = json.Unmarshal(res, &resList)
+	err = yaml.Unmarshal(res, &resList)
 	if err != nil {
 		return Response{}, err
 	}

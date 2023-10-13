@@ -46,11 +46,11 @@ type SingleRequestClient struct {
 }
 
 type Request struct {
-	Method string `json:"m"`
-	Data   string `json:"d"`
+	Method string `yaml:"m"`
+	Data   string `yaml:"d"`
 }
 
 type Response struct {
-	Error string `json:"e"`
-	Data  string `json:"d"`
+	Error string `yaml:"e"`
+	Data  string `yaml:"d"`
 }

@@ -1,9 +1,9 @@
 package comborpc
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
+	"gopkg.in/yaml.v3"
 	"log"
 	"net"
 	"sync"
@@ -152,7 +152,7 @@ func (s *tcpServe) processConnect(c *tcpConnect) error {
 		return err
 	}
 	var requestList []Request
-	err = json.Unmarshal(body, &requestList)
+	err = yaml.Unmarshal(body, &requestList)
 	if err != nil {
 		return err
 	}
@@ -192,7 +192,7 @@ func (s *tcpServe) processConnect(c *tcpConnect) error {
 		}(i)
 	}
 	wg.Wait()
-	resultBody, err := json.Marshal(responseList)
+	resultBody, err := yaml.Marshal(responseList)
 	if err != nil {
 		return err
 	}
