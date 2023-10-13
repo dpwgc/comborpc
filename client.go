@@ -79,6 +79,9 @@ func (c *ComboRequestClient) AddRequests(requests ...Request) *ComboRequestClien
 // Do
 // perform a send operation
 func (c *ComboRequestClient) Do() ([]Response, error) {
+	if len(c.requests) == 0 {
+		return nil, errors.New("requests len = 0")
+	}
 	if len(c.endpoints) == 0 {
 		return nil, errors.New("endpoints len = 0")
 	}
@@ -171,6 +174,9 @@ func (c *SingleRequestClient) SetXmlRequest(method string, v any) *SingleRequest
 // Do
 // perform a send operation
 func (c *SingleRequestClient) Do() (Response, error) {
+	if len(c.requests) == 0 {
+		return Response{}, errors.New("request nil")
+	}
 	if len(c.endpoints) == 0 {
 		return Response{}, errors.New("endpoints len = 0")
 	}
