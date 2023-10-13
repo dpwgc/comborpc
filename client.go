@@ -7,13 +7,21 @@ import (
 	"fmt"
 	"gopkg.in/yaml.v3"
 	"math/rand"
+	"sync"
 	"time"
 )
 
 // NewComboRequestClient
 // create a new composite request client
 func NewComboRequestClient() *ComboRequestClient {
-	return &ComboRequestClient{}
+	return &ComboRequestClient{
+		loadBalancing: loadBalancing,
+	}
+}
+
+func (c *ComboRequestClient) SetLoadBalancing(loadBalancing LoadBalancingFunc) *ComboRequestClient {
+	c.loadBalancing = loadBalancing
+	return c
 }
 
 func (c *ComboRequestClient) SetEndpoints(endpoints ...string) *ComboRequestClient {
@@ -89,7 +97,7 @@ func (c *ComboRequestClient) Do() ([]Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	res, err := tcpRequest(loadBalancing(c.endpoints), c.timeout, data)
+	res, err := tcpRequest(c.loadBalancing(c.endpoints), c.timeout, data)
 	if err != nil {
 		return nil, err
 	}
@@ -99,6 +107,31 @@ func (c *ComboRequestClient) Do() ([]Response, error) {
 		return nil, err
 	}
 	return resList, nil
+}
+
+func (c *ComboRequestClient) Broadcast() error {
+	if len(c.requests) == 0 {
+		return errors.New("requests len = 0")
+	}
+	if len(c.endpoints) == 0 {
+		return errors.New("endpoints len = 0")
+	}
+	data, err := yaml.Marshal(c.requests)
+	if err != nil {
+		return err
+	}
+	var endpointsCopy []string
+	copy(endpointsCopy, c.endpoints)
+	wg := sync.WaitGroup{}
+	wg.Add(len(endpointsCopy))
+	for _, v := range endpointsCopy {
+		go func(v string) {
+			_, _ = tcpRequest(v, c.timeout, data)
+			wg.Done()
+		}(v)
+	}
+	wg.Wait()
+	return nil
 }
 
 // ClearRequests
@@ -111,7 +144,14 @@ func (c *ComboRequestClient) ClearRequests() *ComboRequestClient {
 // NewSingleRequestClient
 // create a new single request client
 func NewSingleRequestClient() *SingleRequestClient {
-	return &SingleRequestClient{}
+	return &SingleRequestClient{
+		loadBalancing: loadBalancing,
+	}
+}
+
+func (c *SingleRequestClient) SetLoadBalancing(loadBalancing LoadBalancingFunc) *SingleRequestClient {
+	c.loadBalancing = loadBalancing
+	return c
 }
 
 func (c *SingleRequestClient) SetEndpoints(endpoints ...string) *SingleRequestClient {
@@ -184,7 +224,7 @@ func (c *SingleRequestClient) Do() (Response, error) {
 	if err != nil {
 		return Response{}, err
 	}
-	res, err := tcpRequest(loadBalancing(c.endpoints), c.timeout, data)
+	res, err := tcpRequest(c.loadBalancing(c.endpoints), c.timeout, data)
 	if err != nil {
 		return Response{}, err
 	}
@@ -197,6 +237,31 @@ func (c *SingleRequestClient) Do() (Response, error) {
 		return Response{}, nil
 	}
 	return resList[0], nil
+}
+
+func (c *SingleRequestClient) Broadcast() error {
+	if len(c.requests) == 0 {
+		return errors.New("requests len = 0")
+	}
+	if len(c.endpoints) == 0 {
+		return errors.New("endpoints len = 0")
+	}
+	data, err := yaml.Marshal(c.requests)
+	if err != nil {
+		return err
+	}
+	var endpointsCopy []string
+	copy(endpointsCopy, c.endpoints)
+	wg := sync.WaitGroup{}
+	wg.Add(len(endpointsCopy))
+	for _, v := range endpointsCopy {
+		go func(v string) {
+			_, _ = tcpRequest(v, c.timeout, data)
+			wg.Done()
+		}(v)
+	}
+	wg.Wait()
+	return nil
 }
 
 func (r *Response) ParseJson(v any) error {
@@ -230,14 +295,22 @@ func tcpRequest(endpoint string, timeout time.Duration, data []byte) ([]byte, er
 	if len(endpoint) == 0 {
 		return nil, errors.New("endpoint nil")
 	}
+	gzipData, err := doGzip(data)
+	if err != nil {
+		return nil, err
+	}
 	c, err := newConnect(endpoint, timeout)
 	if err != nil {
 		return nil, err
 	}
 	defer c.close()
-	err = c.send(data)
+	err = c.send(gzipData)
 	if err != nil {
 		return nil, err
 	}
-	return c.read()
+	res, err := c.read()
+	if err != nil {
+		return nil, err
+	}
+	return unGzip(res)
 }

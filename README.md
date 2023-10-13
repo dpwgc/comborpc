@@ -166,6 +166,7 @@ func demoSingleRequest() {
 * `ComboRequestClient`: 组合请求客户端
   * `SetEndpoints`: 设置服务端地址（支持配置多个服务端地址，发送请求时随机选择其中一个地址）
   * `SetTimeout`: 设置请求超时时间
+  * `SetLoadBalancing`: 自定义负载均衡方法（默认是随机策略）
   * `AddRequest`: 添加请求体
   * `AddRequests`: 添加多个请求体
   * `AddStringRequest`: 添加请求体（传入普通字符串）
@@ -173,16 +174,19 @@ func demoSingleRequest() {
   * `AddYamlRequest`: 添加请求体（将传入对象序列化成Yaml字符串）
   * `AddXmlRequest`: 添加请求体（将传入对象序列化成Xml字符串）
   * `Do`: 执行请求
+  * `Broadcast`: 广播请求
   * `ClearRequests`: 清除之前传入的所有请求体
 * `SingleRequestClient`: 单一请求客户端
   * `SetEndpoints`: 设置服务端地址（支持配置多个服务端地址，发送请求时随机选择其中一个地址）
   * `SetTimeout`: 设置请求超时时间
+  * `SetLoadBalancing`: 自定义负载均衡方法（默认是随机策略）
   * `SetRequest`: 设置请求体
   * `SetStringRequest`: 设置请求体（传入普通字符串）
   * `SetJsonRequest`: 设置请求体（将传入对象序列化成Json字符串）
   * `SetYamlRequest`: 设置请求体（将传入对象序列化成Yaml字符串）
   * `SetXmlRequest`: 设置请求体（将传入对象序列化成Xml字符串）
   * `Do`: 执行请求
+  * `Broadcast`: 广播请求
 * `Response`: 响应体
   * `ParseJson`: 将Json字符串格式的响应数据解析为对象
   * `ParseYaml`: 将Yaml字符串格式的响应数据解析为对象
@@ -195,7 +199,7 @@ func demoSingleRequest() {
 ```
 95
 ```
-* 3、客户端发送请求体（yaml格式数组字符串，m为调用方法名，d为请求数据）
+* 3、客户端发送请求体（yaml格式数组字符串，gzip压缩，m为调用方法名，d为请求数据）
 ```yaml
 - m: testMethod1
   d: '{"A":"test","B":"test"}'
@@ -207,7 +211,7 @@ func demoSingleRequest() {
 ```
 73
 ```
-* 6、服务端发送响应体（yaml格式数组字符串，e为报错内容，d为响应数据，响应体数组排序与请求体数组一致）
+* 6、服务端发送响应体（yaml格式数组字符串，gzip压缩，e为报错内容，d为响应数据，响应体数组排序与请求体数组一致）
 ```yaml
 - e: 
   d: '{"A":"test","B":"test"}'

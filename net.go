@@ -151,8 +151,12 @@ func (s *tcpServe) processConnect(c *tcpConnect) error {
 	if err != nil {
 		return err
 	}
+	unGzipBody, err := unGzip(body)
+	if err != nil {
+		return err
+	}
 	var requestList []Request
-	err = yaml.Unmarshal(body, &requestList)
+	err = yaml.Unmarshal(unGzipBody, &requestList)
 	if err != nil {
 		return err
 	}
@@ -196,5 +200,9 @@ func (s *tcpServe) processConnect(c *tcpConnect) error {
 	if err != nil {
 		return err
 	}
-	return c.send(resultBody)
+	gzipResultBody, err := doGzip(resultBody)
+	if err != nil {
+		return err
+	}
+	return c.send(gzipResultBody)
 }
