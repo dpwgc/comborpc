@@ -160,7 +160,7 @@ func (s *tcpServe) processConnect(c *tcpConnect) error {
 	if err != nil {
 		return err
 	}
-	var responseList []Response
+	var responseList = make([]Response, len(requestList))
 	var wg sync.WaitGroup
 	wg.Add(len(requestList))
 	for i := 0; i < len(requestList); i++ {

@@ -272,7 +272,7 @@ func requestValid(requests []Request, endpoints []string) error {
 }
 
 func tcpBroadcast(endpoints []string, timeout time.Duration, data []byte) []BroadcastResponse {
-	var bcResList []BroadcastResponse
+	var bcResList = make([]BroadcastResponse, len(endpoints))
 	wg := sync.WaitGroup{}
 	wg.Add(len(endpoints))
 	for i := 0; i < len(endpoints); i++ {
