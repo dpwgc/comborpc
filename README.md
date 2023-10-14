@@ -1,6 +1,6 @@
 # ComboRPC
 
-## 基于TCP的简易RPC框架，带中间件功能，支持单个请求调用多个方法，支持负载均衡
+## 基于TCP的简易RPC框架，支持自定义中间件、自定义负载均衡，支持单个请求调用多个方法，支持广播服务。
 
 ***
 
@@ -191,6 +191,21 @@ func demoSingleRequest() {
   * `ParseJson`: 将Json字符串格式的响应数据解析为对象
   * `ParseYaml`: 将Yaml字符串格式的响应数据解析为对象
   * `ParseXml`: 将Xml字符串格式的响应数据解析为对象
+
+### 自定义负载均衡器
+
+#### 自定义负载均衡方法
+```
+// 随机负载均衡处理方法
+func deomLoadBalancing(endpoints []string) string {
+  rand.Seed(time.Now().Unix())
+  return endpoints[rand.Intn(len(endpoints))]
+}
+```
+#### 设置方法
+```
+comborpc.NewComboRequestClient().SetLoadBalancing(deomLoadBalancing)
+```
 
 ### 数据传输方式
 

@@ -109,29 +109,43 @@ func (c *ComboRequestClient) Do() ([]Response, error) {
 	return resList, nil
 }
 
-func (c *ComboRequestClient) Broadcast() error {
+func (c *ComboRequestClient) Broadcast() ([]BroadcastResponse, error) {
 	if len(c.requests) == 0 {
-		return errors.New("requests len = 0")
+		return nil, errors.New("requests len = 0")
 	}
 	if len(c.endpoints) == 0 {
-		return errors.New("endpoints len = 0")
+		return nil, errors.New("endpoints len = 0")
 	}
 	data, err := yaml.Marshal(c.requests)
 	if err != nil {
-		return err
+		return nil, err
 	}
+	var bcResList []BroadcastResponse
 	var endpointsCopy []string
 	copy(endpointsCopy, c.endpoints)
 	wg := sync.WaitGroup{}
 	wg.Add(len(endpointsCopy))
-	for _, v := range endpointsCopy {
-		go func(v string) {
-			_, _ = tcpRequest(v, c.timeout, data)
-			wg.Done()
-		}(v)
+	for i := 0; i < len(endpointsCopy); i++ {
+		bcResList = append(bcResList, BroadcastResponse{})
+		go func(i int) {
+			defer wg.Done()
+			bcResList[i].Endpoint = endpointsCopy[i]
+			res, err := tcpRequest(endpointsCopy[i], c.timeout, data)
+			if err != nil {
+				bcResList[i].Error = err
+				return
+			}
+			var resList []Response
+			err = yaml.Unmarshal(res, &resList)
+			if err != nil {
+				bcResList[i].Error = err
+				return
+			}
+			bcResList[i].Responses = resList
+		}(i)
 	}
 	wg.Wait()
-	return nil
+	return bcResList, nil
 }
 
 // ClearRequests
@@ -239,29 +253,43 @@ func (c *SingleRequestClient) Do() (Response, error) {
 	return resList[0], nil
 }
 
-func (c *SingleRequestClient) Broadcast() error {
+func (c *SingleRequestClient) Broadcast() ([]BroadcastResponse, error) {
 	if len(c.requests) == 0 {
-		return errors.New("requests len = 0")
+		return nil, errors.New("requests len = 0")
 	}
 	if len(c.endpoints) == 0 {
-		return errors.New("endpoints len = 0")
+		return nil, errors.New("endpoints len = 0")
 	}
 	data, err := yaml.Marshal(c.requests)
 	if err != nil {
-		return err
+		return nil, err
 	}
+	var bcResList []BroadcastResponse
 	var endpointsCopy []string
 	copy(endpointsCopy, c.endpoints)
 	wg := sync.WaitGroup{}
 	wg.Add(len(endpointsCopy))
-	for _, v := range endpointsCopy {
-		go func(v string) {
-			_, _ = tcpRequest(v, c.timeout, data)
-			wg.Done()
-		}(v)
+	for i := 0; i < len(endpointsCopy); i++ {
+		bcResList = append(bcResList, BroadcastResponse{})
+		go func(i int) {
+			defer wg.Done()
+			bcResList[i].Endpoint = endpointsCopy[i]
+			res, err := tcpRequest(endpointsCopy[i], c.timeout, data)
+			if err != nil {
+				bcResList[i].Error = err
+				return
+			}
+			var resList []Response
+			err = yaml.Unmarshal(res, &resList)
+			if err != nil {
+				bcResList[i].Error = err
+				return
+			}
+			bcResList[i].Responses = resList
+		}(i)
 	}
 	wg.Wait()
-	return nil
+	return bcResList, nil
 }
 
 func (r *Response) ParseJson(v any) error {

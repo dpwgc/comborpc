@@ -58,3 +58,9 @@ type Response struct {
 	Error string `yaml:"e"`
 	Data  string `yaml:"d"`
 }
+
+type BroadcastResponse struct {
+	Endpoint  string
+	Error     error
+	Responses []Response
+}
