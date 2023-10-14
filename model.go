@@ -13,6 +13,13 @@ type tcpServe struct {
 	router *Router
 }
 
+type RouterOptions struct {
+	Endpoint    string
+	QueueLen    int
+	ConsumerNum int
+	Timeout     time.Duration
+}
+
 type Router struct {
 	endpoint    string
 	router      map[string]MethodFunc
@@ -35,18 +42,25 @@ type Context struct {
 	methods []MethodFunc
 }
 
-type ComboRequestClient struct {
-	endpoints   []string
+type CallOptions struct {
+	Endpoints   []string
+	Timeout     time.Duration
+	LoadBalance LoadBalanceFunc
+}
+
+type callBase struct {
 	requests    []Request
+	endpoints   []string
 	timeout     time.Duration
 	loadBalance LoadBalanceFunc
 }
 
-type SingleRequestClient struct {
-	endpoints   []string
-	requests    []Request
-	timeout     time.Duration
-	loadBalance LoadBalanceFunc
+type ComboCall struct {
+	callBase
+}
+
+type SingleCall struct {
+	callBase
 }
 
 type Request struct {

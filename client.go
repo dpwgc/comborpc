@@ -11,43 +11,42 @@ import (
 	"time"
 )
 
-// NewComboRequestClient
-// create a new composite request client
-func NewComboRequestClient() *ComboRequestClient {
-	return &ComboRequestClient{
-		loadBalance: defaultLoadBalance,
-		timeout:     1 * time.Minute,
+// NewComboCall
+// create a new composite call
+func NewComboCall(options CallOptions) *ComboCall {
+	call := &ComboCall{
+		callBase: callBase{
+			loadBalance: defaultLoadBalance,
+			timeout:     1 * time.Minute,
+		},
 	}
+	return call.SetOptions(options)
 }
 
-func (c *ComboRequestClient) SetLoadBalance(loadBalance LoadBalanceFunc) *ComboRequestClient {
-	c.loadBalance = loadBalance
-	return c
-}
-
-func (c *ComboRequestClient) SetEndpoints(endpoints ...string) *ComboRequestClient {
-	c.endpoints = endpoints
-	return c
-}
-
-func (c *ComboRequestClient) SetTimeout(timeout time.Duration) *ComboRequestClient {
-	c.timeout = timeout
+func (c *ComboCall) SetOptions(options CallOptions) *ComboCall {
+	c.endpoints = options.Endpoints
+	if options.LoadBalance != nil {
+		c.loadBalance = options.LoadBalance
+	}
+	if options.Timeout.Milliseconds() >= 1 {
+		c.timeout = options.Timeout
+	}
 	return c
 }
 
 // AddRequest
 // append the request body
-func (c *ComboRequestClient) AddRequest(request Request) *ComboRequestClient {
+func (c *ComboCall) AddRequest(request Request) *ComboCall {
 	c.requests = append(c.requests, request)
 	return c
 }
-func (c *ComboRequestClient) AddStringRequest(method string, data string) *ComboRequestClient {
+func (c *ComboCall) AddStringRequest(method string, data string) *ComboCall {
 	return c.AddRequest(Request{
 		Method: method,
 		Data:   data,
 	})
 }
-func (c *ComboRequestClient) AddJsonRequest(method string, v any) *ComboRequestClient {
+func (c *ComboCall) AddJsonRequest(method string, v any) *ComboCall {
 	data, err := json.Marshal(v)
 	if err != nil {
 		data = []byte("")
@@ -57,7 +56,7 @@ func (c *ComboRequestClient) AddJsonRequest(method string, v any) *ComboRequestC
 		Data:   string(data),
 	})
 }
-func (c *ComboRequestClient) AddYamlRequest(method string, v any) *ComboRequestClient {
+func (c *ComboCall) AddYamlRequest(method string, v any) *ComboCall {
 	data, err := yaml.Marshal(v)
 	if err != nil {
 		data = []byte("")
@@ -67,7 +66,7 @@ func (c *ComboRequestClient) AddYamlRequest(method string, v any) *ComboRequestC
 		Data:   string(data),
 	})
 }
-func (c *ComboRequestClient) AddXmlRequest(method string, v any) *ComboRequestClient {
+func (c *ComboCall) AddXmlRequest(method string, v any) *ComboCall {
 	data, err := xml.Marshal(v)
 	if err != nil {
 		data = []byte("")
@@ -80,15 +79,15 @@ func (c *ComboRequestClient) AddXmlRequest(method string, v any) *ComboRequestCl
 
 // AddRequests
 // append the request body
-func (c *ComboRequestClient) AddRequests(requests ...Request) *ComboRequestClient {
+func (c *ComboCall) AddRequests(requests ...Request) *ComboCall {
 	c.requests = append(c.requests, requests...)
 	return c
 }
 
 // Do
 // perform a send operation
-func (c *ComboRequestClient) Do() ([]Response, error) {
-	err := requestValid(c.requests, c.endpoints, c.timeout)
+func (c *ComboCall) Do() ([]Response, error) {
+	err := requestValid(c.requests, c.endpoints)
 	if err != nil {
 		return nil, err
 	}
@@ -108,8 +107,8 @@ func (c *ComboRequestClient) Do() ([]Response, error) {
 	return resList, nil
 }
 
-func (c *ComboRequestClient) Broadcast() ([]BroadcastResponse, error) {
-	err := requestValid(c.requests, c.endpoints, c.timeout)
+func (c *ComboCall) Broadcast() ([]BroadcastResponse, error) {
+	err := requestValid(c.requests, c.endpoints)
 	if err != nil {
 		return nil, err
 	}
@@ -122,38 +121,37 @@ func (c *ComboRequestClient) Broadcast() ([]BroadcastResponse, error) {
 
 // ClearRequests
 // clear all request
-func (c *ComboRequestClient) ClearRequests() *ComboRequestClient {
+func (c *ComboCall) ClearRequests() *ComboCall {
 	c.requests = nil
 	return c
 }
 
-// NewSingleRequestClient
-// create a new single request client
-func NewSingleRequestClient() *SingleRequestClient {
-	return &SingleRequestClient{
-		loadBalance: defaultLoadBalance,
-		timeout:     1 * time.Minute,
+// NewSingleCall
+// create a new single call
+func NewSingleCall(options CallOptions) *SingleCall {
+	call := &SingleCall{
+		callBase: callBase{
+			loadBalance: defaultLoadBalance,
+			timeout:     1 * time.Minute,
+		},
 	}
+	return call.SetOptions(options)
 }
 
-func (c *SingleRequestClient) SetLoadBalance(loadBalancing LoadBalanceFunc) *SingleRequestClient {
-	c.loadBalance = loadBalancing
-	return c
-}
-
-func (c *SingleRequestClient) SetEndpoints(endpoints ...string) *SingleRequestClient {
-	c.endpoints = endpoints
-	return c
-}
-
-func (c *SingleRequestClient) SetTimeout(timeout time.Duration) *SingleRequestClient {
-	c.timeout = timeout
+func (c *SingleCall) SetOptions(options CallOptions) *SingleCall {
+	c.endpoints = options.Endpoints
+	if options.LoadBalance != nil {
+		c.loadBalance = options.LoadBalance
+	}
+	if options.Timeout.Milliseconds() >= 1 {
+		c.timeout = options.Timeout
+	}
 	return c
 }
 
 // SetRequest
 // set a request body
-func (c *SingleRequestClient) SetRequest(request Request) *SingleRequestClient {
+func (c *SingleCall) SetRequest(request Request) *SingleCall {
 	if len(c.requests) == 0 {
 		c.requests = append(c.requests, request)
 	} else {
@@ -161,13 +159,13 @@ func (c *SingleRequestClient) SetRequest(request Request) *SingleRequestClient {
 	}
 	return c
 }
-func (c *SingleRequestClient) SetStringRequest(method string, data string) *SingleRequestClient {
+func (c *SingleCall) SetStringRequest(method string, data string) *SingleCall {
 	return c.SetRequest(Request{
 		Method: method,
 		Data:   data,
 	})
 }
-func (c *SingleRequestClient) SetJsonRequest(method string, v any) *SingleRequestClient {
+func (c *SingleCall) SetJsonRequest(method string, v any) *SingleCall {
 	data, err := json.Marshal(v)
 	if err != nil {
 		data = []byte("")
@@ -177,7 +175,7 @@ func (c *SingleRequestClient) SetJsonRequest(method string, v any) *SingleReques
 		Data:   string(data),
 	})
 }
-func (c *SingleRequestClient) SetYamlRequest(method string, v any) *SingleRequestClient {
+func (c *SingleCall) SetYamlRequest(method string, v any) *SingleCall {
 	data, err := yaml.Marshal(v)
 	if err != nil {
 		data = []byte("")
@@ -187,7 +185,7 @@ func (c *SingleRequestClient) SetYamlRequest(method string, v any) *SingleReques
 		Data:   string(data),
 	})
 }
-func (c *SingleRequestClient) SetXmlRequest(method string, v any) *SingleRequestClient {
+func (c *SingleCall) SetXmlRequest(method string, v any) *SingleCall {
 	data, err := xml.Marshal(v)
 	if err != nil {
 		data = []byte("")
@@ -200,8 +198,8 @@ func (c *SingleRequestClient) SetXmlRequest(method string, v any) *SingleRequest
 
 // Do
 // perform a send operation
-func (c *SingleRequestClient) Do() (Response, error) {
-	err := requestValid(c.requests, c.endpoints, c.timeout)
+func (c *SingleCall) Do() (Response, error) {
+	err := requestValid(c.requests, c.endpoints)
 	if err != nil {
 		return Response{}, err
 	}
@@ -224,8 +222,8 @@ func (c *SingleRequestClient) Do() (Response, error) {
 	return resList[0], nil
 }
 
-func (c *SingleRequestClient) Broadcast() ([]BroadcastResponse, error) {
-	err := requestValid(c.requests, c.endpoints, c.timeout)
+func (c *SingleCall) Broadcast() ([]BroadcastResponse, error) {
+	err := requestValid(c.requests, c.endpoints)
 	if err != nil {
 		return nil, err
 	}
@@ -256,14 +254,14 @@ func (r *Response) ParseXml(v any) error {
 }
 
 func defaultLoadBalance(endpoints []string) string {
+	if len(endpoints) == 1 {
+		return endpoints[0]
+	}
 	rand.Seed(time.Now().Unix())
 	return endpoints[rand.Intn(len(endpoints))]
 }
 
-func requestValid(requests []Request, endpoints []string, timeout time.Duration) error {
-	if timeout.Milliseconds() < 1 {
-		timeout = 1 * time.Minute
-	}
+func requestValid(requests []Request, endpoints []string) error {
 	if len(requests) == 0 {
 		return errors.New("requests len = 0")
 	}
@@ -275,16 +273,14 @@ func requestValid(requests []Request, endpoints []string, timeout time.Duration)
 
 func tcpBroadcast(endpoints []string, timeout time.Duration, data []byte) []BroadcastResponse {
 	var bcResList []BroadcastResponse
-	var endpointsCopy []string
-	copy(endpointsCopy, endpoints)
 	wg := sync.WaitGroup{}
-	wg.Add(len(endpointsCopy))
-	for i := 0; i < len(endpointsCopy); i++ {
+	wg.Add(len(endpoints))
+	for i := 0; i < len(endpoints); i++ {
 		bcResList = append(bcResList, BroadcastResponse{})
+		bcResList[i].Endpoint = endpoints[i]
 		go func(i int) {
 			defer wg.Done()
-			bcResList[i].Endpoint = endpointsCopy[i]
-			res, err := tcpRequest(endpointsCopy[i], timeout, data)
+			res, err := tcpRequest(endpoints[i], timeout, data)
 			if err != nil {
 				bcResList[i].Error = err
 				return

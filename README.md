@@ -29,8 +29,11 @@ import "github.com/dpwgc/comborpc"
 
 ```
 func demoServe() {
-    // 新建服务路由（地址、缓冲队列长度、队列消费者数量、请求处理超时时间）
-    router := comborpc.NewRouter("0.0.0.0:8001", 10000, 100, 30*time.Second)
+
+    // 新建服务路由
+    router := comborpc.NewRouter(comborpc.RouterOptions{
+        Endpoint:    "0.0.0.0:8001,
+    })
 
     // 添加中间件（中间件1：testMiddleware1、中间件2：testMiddleware2）
     router.AddMiddlewares(testMiddleware1, testMiddleware2)
@@ -46,12 +49,18 @@ func demoServe() {
 
 ### 服务端路由方法列表
 
+* `NewRouter`: 创建Router对象
 * `Router`: 服务路由
     * `AddMethod`: 添加方法
     * `AddMiddleware`: 添加中间件
     * `AddMiddlewares`: 添加多个中间件
     * `Run`: 启动路由监听服务
     * `Close`: 关闭路由监听服务
+* `RouterOptions`: 路由设置
+  * `Endpoint`: 服务端地址
+  * `QueueLen`: 连接队列长度
+  * `ConsumerNum`: 队列消费者数量
+  * `Timeout`: 请求超时时间
 
 ### 服务端方法编写示例
 
@@ -114,11 +123,11 @@ router.Close()
 
 ```
 func demoComboRequest() {
+
     // 构建并发送请求
-    responseList, err := comborpc.NewComboRequestClient().
-    SetEndpoints("0.0.0.0:8001").
-    SetTimeout(1 * time.Minute).
-    AddRequest(comborpc.Request{
+    responseList, err := comborpc.NewComboCall(comborpc.CallOptions{
+        Endpoints: []string{"0.0.0.0:8001"},
+    }).AddRequest(comborpc.Request{
         Method: "testMethod1",
         Data:   "test request data 1",
     }).AddRequest(comborpc.Request{
@@ -142,11 +151,11 @@ func demoComboRequest() {
 
 ```
 func demoSingleRequest() {
+
     // 构建并发送请求
-    response, err := comborpc.NewSingleRequestClient().
-    SetEndpoints("0.0.0.0:8001").
-    SetTimeout(1 * time.Minute).
-    SetRequest(comborpc.Request{
+    response, err := comborpc.NewSingleCall(comborpc.CallOptions{
+        Endpoints: []string{"0.0.0.0:8001"},
+    }).SetRequest(comborpc.Request{
         Method: "testMethod1",
         Data:   "testData1",
     }).Do()
@@ -163,10 +172,9 @@ func demoSingleRequest() {
 
 ### 客户端方法列表
 
-* `ComboRequestClient`: 组合请求客户端
-  * `SetEndpoints`: 设置服务端地址（支持配置多个服务端地址，发送请求时随机选择其中一个地址）
-  * `SetTimeout`: 设置请求超时时间
-  * `SetLoadBalance`: 自定义负载均衡方法（默认是随机策略）
+* `NewComboCall`: 创建ComboCall对象
+* `ComboCall`: 组合调用
+  * `SetOptions`: 设置调用参数
   * `AddRequest`: 添加请求体
   * `AddRequests`: 添加多个请求体
   * `AddStringRequest`: 添加请求体（传入普通字符串）
@@ -176,10 +184,9 @@ func demoSingleRequest() {
   * `Do`: 执行请求
   * `Broadcast`: 广播请求
   * `ClearRequests`: 清除之前传入的所有请求体
-* `SingleRequestClient`: 单一请求客户端
-  * `SetEndpoints`: 设置服务端地址（支持配置多个服务端地址，发送请求时随机选择其中一个地址）
-  * `SetTimeout`: 设置请求超时时间
-  * `SetLoadBalance`: 自定义负载均衡方法（默认是随机策略）
+* `NewSingleCall`: 创建SingleCall对象
+* `SingleCall`: 单一调用
+  * `SetOptions`: 设置调用参数
   * `SetRequest`: 设置请求体
   * `SetStringRequest`: 设置请求体（传入普通字符串）
   * `SetJsonRequest`: 设置请求体（将传入对象序列化成Json字符串）
@@ -187,6 +194,10 @@ func demoSingleRequest() {
   * `SetXmlRequest`: 设置请求体（将传入对象序列化成Xml字符串）
   * `Do`: 执行请求
   * `Broadcast`: 广播请求
+* `CallOptions`: 调用参数
+  * `Endpoints`: 服务端地址列表
+  * `Timeout`: 请求超时时间
+  * `LoadBalance`: 自定义负载均衡方法
 * `Response`: 响应体
   * `ParseJson`: 将Json字符串格式的响应数据解析为对象
   * `ParseYaml`: 将Yaml字符串格式的响应数据解析为对象
@@ -198,13 +209,16 @@ func demoSingleRequest() {
 ```
 // 随机负载均衡处理方法
 func deomLoadBalance(endpoints []string) string {
-  rand.Seed(time.Now().Unix())
-  return endpoints[rand.Intn(len(endpoints))]
+   rand.Seed(time.Now().Unix())
+   return endpoints[rand.Intn(len(endpoints))]
 }
 ```
 #### 设置方法
 ```
-comborpc.NewComboRequestClient().SetLoadBalance(deomLoadBalance)
+comborpc.NewComboCall(comborpc.CallOptions{
+   Endpoints: []string{"0.0.0.0:8001"},
+   LoadBalance: deomLoadBalance,
+})
 ```
 
 ### 数据传输方式

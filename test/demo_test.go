@@ -20,17 +20,15 @@ func Test(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	fmt.Println("-----\n3. send combo request")
-	responseList, err := comborpc.NewComboRequestClient().
-		SetEndpoints(endpoint).
-		SetTimeout(1 * time.Minute).
-		AddRequest(comborpc.Request{
-			Method: "testMethod1",
-			Data:   "test request data 1",
-		}).
-		AddRequest(comborpc.Request{
-			Method: "testMethod2",
-			Data:   "test request data 2",
-		}).Do()
+	responseList, err := comborpc.NewComboCall(comborpc.CallOptions{
+		Endpoints: []string{endpoint},
+	}).AddRequest(comborpc.Request{
+		Method: "testMethod1",
+		Data:   "test request data 1",
+	}).AddRequest(comborpc.Request{
+		Method: "testMethod2",
+		Data:   "test request data 2",
+	}).Do()
 	if err != nil {
 		panic(err)
 	}
@@ -39,13 +37,12 @@ func Test(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	fmt.Println("-----\n4. send single request")
-	response, err := comborpc.NewSingleRequestClient().
-		SetEndpoints(endpoint).
-		SetTimeout(1 * time.Minute).
-		SetRequest(comborpc.Request{
-			Method: "testMethod1",
-			Data:   "testData1",
-		}).Do()
+	response, err := comborpc.NewSingleCall(comborpc.CallOptions{
+		Endpoints: []string{endpoint},
+	}).SetRequest(comborpc.Request{
+		Method: "testMethod1",
+		Data:   "testData1",
+	}).Do()
 	if err != nil {
 		panic(err)
 	}
@@ -65,7 +62,11 @@ func Test(t *testing.T) {
 }
 
 func enableTestRouter(endpoint string) {
-	router = comborpc.NewRouter(endpoint, 10000, 100, 30*time.Second).
+	router = comborpc.NewRouter(comborpc.RouterOptions{
+		Endpoint:    endpoint,
+		QueueLen:    1000,
+		ConsumerNum: 30,
+	}).
 		AddMiddlewares(testMiddleware1, testMiddleware2).
 		AddMethod("testMethod1", testMethod1).
 		AddMethod("testMethod2", testMethod2)
