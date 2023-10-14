@@ -15,12 +15,13 @@ import (
 // create a new composite request client
 func NewComboRequestClient() *ComboRequestClient {
 	return &ComboRequestClient{
-		loadBalancing: loadBalancing,
+		loadBalance: defaultLoadBalance,
+		timeout:     1 * time.Minute,
 	}
 }
 
-func (c *ComboRequestClient) SetLoadBalancing(loadBalancing LoadBalancingFunc) *ComboRequestClient {
-	c.loadBalancing = loadBalancing
+func (c *ComboRequestClient) SetLoadBalancing(loadBalance LoadBalanceFunc) *ComboRequestClient {
+	c.loadBalance = loadBalance
 	return c
 }
 
@@ -87,17 +88,15 @@ func (c *ComboRequestClient) AddRequests(requests ...Request) *ComboRequestClien
 // Do
 // perform a send operation
 func (c *ComboRequestClient) Do() ([]Response, error) {
-	if len(c.requests) == 0 {
-		return nil, errors.New("requests len = 0")
-	}
-	if len(c.endpoints) == 0 {
-		return nil, errors.New("endpoints len = 0")
+	err := requestValid(c.requests, c.endpoints, c.timeout)
+	if err != nil {
+		return nil, err
 	}
 	data, err := yaml.Marshal(c.requests)
 	if err != nil {
 		return nil, err
 	}
-	res, err := tcpRequest(c.loadBalancing(c.endpoints), c.timeout, data)
+	res, err := tcpRequest(c.loadBalance(c.endpoints), c.timeout, data)
 	if err != nil {
 		return nil, err
 	}
@@ -110,42 +109,15 @@ func (c *ComboRequestClient) Do() ([]Response, error) {
 }
 
 func (c *ComboRequestClient) Broadcast() ([]BroadcastResponse, error) {
-	if len(c.requests) == 0 {
-		return nil, errors.New("requests len = 0")
-	}
-	if len(c.endpoints) == 0 {
-		return nil, errors.New("endpoints len = 0")
+	err := requestValid(c.requests, c.endpoints, c.timeout)
+	if err != nil {
+		return nil, err
 	}
 	data, err := yaml.Marshal(c.requests)
 	if err != nil {
 		return nil, err
 	}
-	var bcResList []BroadcastResponse
-	var endpointsCopy []string
-	copy(endpointsCopy, c.endpoints)
-	wg := sync.WaitGroup{}
-	wg.Add(len(endpointsCopy))
-	for i := 0; i < len(endpointsCopy); i++ {
-		bcResList = append(bcResList, BroadcastResponse{})
-		go func(i int) {
-			defer wg.Done()
-			bcResList[i].Endpoint = endpointsCopy[i]
-			res, err := tcpRequest(endpointsCopy[i], c.timeout, data)
-			if err != nil {
-				bcResList[i].Error = err
-				return
-			}
-			var resList []Response
-			err = yaml.Unmarshal(res, &resList)
-			if err != nil {
-				bcResList[i].Error = err
-				return
-			}
-			bcResList[i].Responses = resList
-		}(i)
-	}
-	wg.Wait()
-	return bcResList, nil
+	return tcpBroadcast(c.endpoints, c.timeout, data), nil
 }
 
 // ClearRequests
@@ -159,12 +131,13 @@ func (c *ComboRequestClient) ClearRequests() *ComboRequestClient {
 // create a new single request client
 func NewSingleRequestClient() *SingleRequestClient {
 	return &SingleRequestClient{
-		loadBalancing: loadBalancing,
+		loadBalance: defaultLoadBalance,
+		timeout:     1 * time.Minute,
 	}
 }
 
-func (c *SingleRequestClient) SetLoadBalancing(loadBalancing LoadBalancingFunc) *SingleRequestClient {
-	c.loadBalancing = loadBalancing
+func (c *SingleRequestClient) SetLoadBalancing(loadBalancing LoadBalanceFunc) *SingleRequestClient {
+	c.loadBalance = loadBalancing
 	return c
 }
 
@@ -228,17 +201,15 @@ func (c *SingleRequestClient) SetXmlRequest(method string, v any) *SingleRequest
 // Do
 // perform a send operation
 func (c *SingleRequestClient) Do() (Response, error) {
-	if len(c.requests) == 0 {
-		return Response{}, errors.New("request nil")
-	}
-	if len(c.endpoints) == 0 {
-		return Response{}, errors.New("endpoints len = 0")
+	err := requestValid(c.requests, c.endpoints, c.timeout)
+	if err != nil {
+		return Response{}, err
 	}
 	data, err := yaml.Marshal(c.requests)
 	if err != nil {
 		return Response{}, err
 	}
-	res, err := tcpRequest(c.loadBalancing(c.endpoints), c.timeout, data)
+	res, err := tcpRequest(c.loadBalance(c.endpoints), c.timeout, data)
 	if err != nil {
 		return Response{}, err
 	}
@@ -254,42 +225,15 @@ func (c *SingleRequestClient) Do() (Response, error) {
 }
 
 func (c *SingleRequestClient) Broadcast() ([]BroadcastResponse, error) {
-	if len(c.requests) == 0 {
-		return nil, errors.New("requests len = 0")
-	}
-	if len(c.endpoints) == 0 {
-		return nil, errors.New("endpoints len = 0")
+	err := requestValid(c.requests, c.endpoints, c.timeout)
+	if err != nil {
+		return nil, err
 	}
 	data, err := yaml.Marshal(c.requests)
 	if err != nil {
 		return nil, err
 	}
-	var bcResList []BroadcastResponse
-	var endpointsCopy []string
-	copy(endpointsCopy, c.endpoints)
-	wg := sync.WaitGroup{}
-	wg.Add(len(endpointsCopy))
-	for i := 0; i < len(endpointsCopy); i++ {
-		bcResList = append(bcResList, BroadcastResponse{})
-		go func(i int) {
-			defer wg.Done()
-			bcResList[i].Endpoint = endpointsCopy[i]
-			res, err := tcpRequest(endpointsCopy[i], c.timeout, data)
-			if err != nil {
-				bcResList[i].Error = err
-				return
-			}
-			var resList []Response
-			err = yaml.Unmarshal(res, &resList)
-			if err != nil {
-				bcResList[i].Error = err
-				return
-			}
-			bcResList[i].Responses = resList
-		}(i)
-	}
-	wg.Wait()
-	return bcResList, nil
+	return tcpBroadcast(c.endpoints, c.timeout, data), nil
 }
 
 func (r *Response) ParseJson(v any) error {
@@ -311,15 +255,54 @@ func (r *Response) ParseXml(v any) error {
 	return xml.Unmarshal([]byte(r.Data), v)
 }
 
-func loadBalancing(endpoints []string) string {
+func defaultLoadBalance(endpoints []string) string {
 	rand.Seed(time.Now().Unix())
 	return endpoints[rand.Intn(len(endpoints))]
 }
 
-func tcpRequest(endpoint string, timeout time.Duration, data []byte) ([]byte, error) {
+func requestValid(requests []Request, endpoints []string, timeout time.Duration) error {
 	if timeout.Milliseconds() < 1 {
 		timeout = 1 * time.Minute
 	}
+	if len(requests) == 0 {
+		return errors.New("requests len = 0")
+	}
+	if len(endpoints) == 0 {
+		return errors.New("endpoints len = 0")
+	}
+	return nil
+}
+
+func tcpBroadcast(endpoints []string, timeout time.Duration, data []byte) []BroadcastResponse {
+	var bcResList []BroadcastResponse
+	var endpointsCopy []string
+	copy(endpointsCopy, endpoints)
+	wg := sync.WaitGroup{}
+	wg.Add(len(endpointsCopy))
+	for i := 0; i < len(endpointsCopy); i++ {
+		bcResList = append(bcResList, BroadcastResponse{})
+		go func(i int) {
+			defer wg.Done()
+			bcResList[i].Endpoint = endpointsCopy[i]
+			res, err := tcpRequest(endpointsCopy[i], timeout, data)
+			if err != nil {
+				bcResList[i].Error = err
+				return
+			}
+			var resList []Response
+			err = yaml.Unmarshal(res, &resList)
+			if err != nil {
+				bcResList[i].Error = err
+				return
+			}
+			bcResList[i].Responses = resList
+		}(i)
+	}
+	wg.Wait()
+	return bcResList
+}
+
+func tcpRequest(endpoint string, timeout time.Duration, data []byte) ([]byte, error) {
 	if len(endpoint) == 0 {
 		return nil, errors.New("endpoint nil")
 	}

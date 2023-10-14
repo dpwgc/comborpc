@@ -26,7 +26,7 @@ type Router struct {
 
 type MethodFunc func(ctx *Context)
 
-type LoadBalancingFunc func(endpoints []string) string
+type LoadBalanceFunc func(endpoints []string) string
 
 type Context struct {
 	input   string
@@ -36,17 +36,17 @@ type Context struct {
 }
 
 type ComboRequestClient struct {
-	endpoints     []string
-	requests      []Request
-	timeout       time.Duration
-	loadBalancing LoadBalancingFunc
+	endpoints   []string
+	requests    []Request
+	timeout     time.Duration
+	loadBalance LoadBalanceFunc
 }
 
 type SingleRequestClient struct {
-	endpoints     []string
-	requests      []Request
-	timeout       time.Duration
-	loadBalancing LoadBalancingFunc
+	endpoints   []string
+	requests    []Request
+	timeout     time.Duration
+	loadBalance LoadBalanceFunc
 }
 
 type Request struct {

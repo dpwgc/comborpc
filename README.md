@@ -166,7 +166,7 @@ func demoSingleRequest() {
 * `ComboRequestClient`: 组合请求客户端
   * `SetEndpoints`: 设置服务端地址（支持配置多个服务端地址，发送请求时随机选择其中一个地址）
   * `SetTimeout`: 设置请求超时时间
-  * `SetLoadBalancing`: 自定义负载均衡方法（默认是随机策略）
+  * `SetLoadBalance`: 自定义负载均衡方法（默认是随机策略）
   * `AddRequest`: 添加请求体
   * `AddRequests`: 添加多个请求体
   * `AddStringRequest`: 添加请求体（传入普通字符串）
@@ -179,7 +179,7 @@ func demoSingleRequest() {
 * `SingleRequestClient`: 单一请求客户端
   * `SetEndpoints`: 设置服务端地址（支持配置多个服务端地址，发送请求时随机选择其中一个地址）
   * `SetTimeout`: 设置请求超时时间
-  * `SetLoadBalancing`: 自定义负载均衡方法（默认是随机策略）
+  * `SetLoadBalance`: 自定义负载均衡方法（默认是随机策略）
   * `SetRequest`: 设置请求体
   * `SetStringRequest`: 设置请求体（传入普通字符串）
   * `SetJsonRequest`: 设置请求体（将传入对象序列化成Json字符串）
@@ -197,14 +197,14 @@ func demoSingleRequest() {
 #### 自定义负载均衡方法
 ```
 // 随机负载均衡处理方法
-func deomLoadBalancing(endpoints []string) string {
+func deomLoadBalance(endpoints []string) string {
   rand.Seed(time.Now().Unix())
   return endpoints[rand.Intn(len(endpoints))]
 }
 ```
 #### 设置方法
 ```
-comborpc.NewComboRequestClient().SetLoadBalancing(deomLoadBalancing)
+comborpc.NewComboRequestClient().SetLoadBalance(deomLoadBalance)
 ```
 
 ### 数据传输方式
