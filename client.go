@@ -20,7 +20,7 @@ func NewComboRequestClient() *ComboRequestClient {
 	}
 }
 
-func (c *ComboRequestClient) SetLoadBalancing(loadBalance LoadBalanceFunc) *ComboRequestClient {
+func (c *ComboRequestClient) SetLoadBalance(loadBalance LoadBalanceFunc) *ComboRequestClient {
 	c.loadBalance = loadBalance
 	return c
 }
@@ -136,7 +136,7 @@ func NewSingleRequestClient() *SingleRequestClient {
 	}
 }
 
-func (c *SingleRequestClient) SetLoadBalancing(loadBalancing LoadBalanceFunc) *SingleRequestClient {
+func (c *SingleRequestClient) SetLoadBalance(loadBalancing LoadBalanceFunc) *SingleRequestClient {
 	c.loadBalance = loadBalancing
 	return c
 }
