@@ -6,10 +6,9 @@
 
 ### 项目结构
 
-* `client.go`: 客户端
-* `context.go`: 服务端-上下文
-* `router.go`: 服务端-路由
-* `net.go`: 网络服务（TCP）
+* `client.go`: 客户端相关
+* `server.go`: 服务端相关
+* `net.go`: 基础网络服务（TCP）
 
 ***
 
@@ -32,7 +31,7 @@ func demoServe() {
 
     // 新建服务路由
     router := comborpc.NewRouter(comborpc.RouterOptions{
-        Endpoint:    "0.0.0.0:8001,
+        Endpoint:    "0.0.0.0:8001",
     })
 
     // 添加中间件（中间件1：testMiddleware1、中间件2：testMiddleware2）
@@ -43,7 +42,10 @@ func demoServe() {
     router.AddMethod("testMethod2", testMethod2)
 
     // 启动路由监听服务
-    router.Run()
+    err := router.Run()
+    if err != nil {
+        panic(err) 
+    }
 }
 ```
 
@@ -107,6 +109,9 @@ func testMiddleware2(ctx *comborpc.Context) {
   * `WriteJson`: 将对象序列化为Json格式字符串，并写入响应体
   * `WriteYaml`: 将对象序列化为Yaml格式字符串，并写入响应体
   * `WriteXml`: 将对象序列化为Xml格式字符串，并写入响应体
+  * `GetCallMethod`: 获取当前被客户端调用的方法名
+  * `PutShareData`: 保存上下文共享数据
+  * `GetShareData`: 获取上下文共享数据
   * `Next`: 进入下一个方法（中间件相关）
   * `Abort`: 停止继续执行下一个方法（中间件相关）
 
@@ -174,7 +179,6 @@ func demoSingleRequest() {
 
 * `NewComboCall`: 创建ComboCall对象
 * `ComboCall`: 组合调用
-  * `SetOptions`: 设置调用参数
   * `AddRequest`: 添加请求体
   * `AddRequests`: 添加多个请求体
   * `AddStringRequest`: 添加请求体（传入普通字符串）
@@ -183,10 +187,8 @@ func demoSingleRequest() {
   * `AddXmlRequest`: 添加请求体（将传入对象序列化成Xml字符串）
   * `Do`: 执行请求
   * `Broadcast`: 广播请求
-  * `ClearRequests`: 清除之前传入的所有请求体
 * `NewSingleCall`: 创建SingleCall对象
 * `SingleCall`: 单一调用
-  * `SetOptions`: 设置调用参数
   * `SetRequest`: 设置请求体
   * `SetStringRequest`: 设置请求体（传入普通字符串）
   * `SetJsonRequest`: 设置请求体（将传入对象序列化成Json字符串）

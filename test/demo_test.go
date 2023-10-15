@@ -51,10 +51,7 @@ func Test(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	fmt.Println("-----\n5. router close")
-	err = router.Close()
-	if err != nil {
-		panic(err)
-	}
+	router.Close()
 
 	time.Sleep(1 * time.Second)
 
@@ -70,7 +67,10 @@ func enableTestRouter(endpoint string) {
 		AddMiddlewares(testMiddleware1, testMiddleware2).
 		AddMethod("testMethod1", testMethod1).
 		AddMethod("testMethod2", testMethod2)
-	router.Run()
+	err := router.Run()
+	if err != nil {
+		panic(err)
+	}
 }
 
 func testMiddleware1(ctx *comborpc.Context) {

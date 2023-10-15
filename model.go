@@ -2,6 +2,7 @@ package comborpc
 
 import (
 	"net"
+	"sync/atomic"
 	"time"
 )
 
@@ -36,10 +37,12 @@ type MethodFunc func(ctx *Context)
 type LoadBalanceFunc func(endpoints []string) string
 
 type Context struct {
-	input   string
-	output  string
-	index   int
-	methods []MethodFunc
+	callMethod string
+	input      string
+	output     string
+	index      int
+	methods    []MethodFunc
+	shareData  atomic.Value
 }
 
 type CallOptions struct {
@@ -65,12 +68,12 @@ type SingleCall struct {
 
 type Request struct {
 	Method string `yaml:"m"`
-	Data   string `yaml:"d"`
+	Data   string `yaml:"d,omitempty"`
 }
 
 type Response struct {
-	Error string `yaml:"e"`
-	Data  string `yaml:"d"`
+	Error string `yaml:"e,omitempty"`
+	Data  string `yaml:"d,omitempty"`
 }
 
 type BroadcastResponse struct {

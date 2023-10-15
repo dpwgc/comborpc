@@ -88,34 +88,27 @@ func newTcpServe(r *Router) *tcpServe {
 }
 
 // tcp服务监听
-func (s *tcpServe) enableListener() {
+func (s *tcpServe) enableListener() error {
 	server, err := net.Listen("tcp", s.router.endpoint)
 	if err != nil {
-		panic(err)
+		return err
 	}
-	defer func(server net.Listener) {
-		if s.router.close {
-			return
-		}
-		err = server.Close()
-		s.router.close = true
-		if err != nil {
-			panic(err)
-		}
-	}(server)
 	s.router.listener = server
 	for {
 		// 接收tcp数据
 		conn, err := server.Accept()
 		if err != nil {
 			if s.router.close {
-				return
+				return nil
 			}
 			log.Println(err)
 			continue
 		}
 		err = conn.SetDeadline(time.Now().Add(s.router.timeout))
 		if err != nil {
+			if s.router.close {
+				return nil
+			}
 			log.Println(err)
 			continue
 		}
@@ -164,7 +157,6 @@ func (s *tcpServe) processConnect(c *tcpConnect) error {
 	var wg sync.WaitGroup
 	wg.Add(len(requestList))
 	for i := 0; i < len(requestList); i++ {
-		responseList = append(responseList, Response{})
 		if s.router.router[requestList[i].Method] == nil {
 			responseList[i].Error = "no method found"
 			wg.Done()
@@ -179,9 +171,10 @@ func (s *tcpServe) processConnect(c *tcpConnect) error {
 				wg.Done()
 			}()
 			ctx := Context{
-				input:   requestList[i].Data,
-				index:   0,
-				methods: s.router.middlewares,
+				callMethod: requestList[i].Method,
+				input:      requestList[i].Data,
+				index:      0,
+				methods:    copyMethodFuncSlice(s.router.middlewares),
 			}
 			if len(s.router.middlewares) > 0 {
 				ctx.methods = append(ctx.methods, s.router.router[requestList[i].Method])
@@ -196,13 +189,13 @@ func (s *tcpServe) processConnect(c *tcpConnect) error {
 		}(i)
 	}
 	wg.Wait()
-	resultBody, err := yaml.Marshal(responseList)
+	resBody, err := yaml.Marshal(responseList)
 	if err != nil {
 		return err
 	}
-	gzipResultBody, err := doGzip(resultBody)
+	gzipResBody, err := doGzip(resBody)
 	if err != nil {
 		return err
 	}
-	return c.send(gzipResultBody)
+	return c.send(gzipResBody)
 }

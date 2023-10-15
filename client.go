@@ -14,17 +14,13 @@ import (
 // NewComboCall
 // create a new composite call
 func NewComboCall(options CallOptions) *ComboCall {
-	call := &ComboCall{
+	c := &ComboCall{
 		callBase: callBase{
+			endpoints:   copyStringSlice(options.Endpoints),
 			loadBalance: defaultLoadBalance,
 			timeout:     1 * time.Minute,
 		},
 	}
-	return call.SetOptions(options)
-}
-
-func (c *ComboCall) SetOptions(options CallOptions) *ComboCall {
-	c.endpoints = options.Endpoints
 	if options.LoadBalance != nil {
 		c.loadBalance = options.LoadBalance
 	}
@@ -95,7 +91,7 @@ func (c *ComboCall) Do() ([]Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	res, err := tcpRequest(c.loadBalance(c.endpoints), c.timeout, data)
+	res, err := tcpCall(c.loadBalance(c.endpoints), c.timeout, data)
 	if err != nil {
 		return nil, err
 	}
@@ -119,27 +115,16 @@ func (c *ComboCall) Broadcast() ([]BroadcastResponse, error) {
 	return tcpBroadcast(c.endpoints, c.timeout, data), nil
 }
 
-// ClearRequests
-// clear all request
-func (c *ComboCall) ClearRequests() *ComboCall {
-	c.requests = nil
-	return c
-}
-
 // NewSingleCall
 // create a new single call
 func NewSingleCall(options CallOptions) *SingleCall {
-	call := &SingleCall{
+	c := &SingleCall{
 		callBase: callBase{
+			endpoints:   options.Endpoints,
 			loadBalance: defaultLoadBalance,
 			timeout:     1 * time.Minute,
 		},
 	}
-	return call.SetOptions(options)
-}
-
-func (c *SingleCall) SetOptions(options CallOptions) *SingleCall {
-	c.endpoints = options.Endpoints
 	if options.LoadBalance != nil {
 		c.loadBalance = options.LoadBalance
 	}
@@ -207,7 +192,7 @@ func (c *SingleCall) Do() (Response, error) {
 	if err != nil {
 		return Response{}, err
 	}
-	res, err := tcpRequest(c.loadBalance(c.endpoints), c.timeout, data)
+	res, err := tcpCall(c.loadBalance(c.endpoints), c.timeout, data)
 	if err != nil {
 		return Response{}, err
 	}
@@ -257,6 +242,9 @@ func defaultLoadBalance(endpoints []string) string {
 	if len(endpoints) == 1 {
 		return endpoints[0]
 	}
+	if len(endpoints) == 0 {
+		return ""
+	}
 	rand.Seed(time.Now().Unix())
 	return endpoints[rand.Intn(len(endpoints))]
 }
@@ -276,11 +264,10 @@ func tcpBroadcast(endpoints []string, timeout time.Duration, data []byte) []Broa
 	wg := sync.WaitGroup{}
 	wg.Add(len(endpoints))
 	for i := 0; i < len(endpoints); i++ {
-		bcResList = append(bcResList, BroadcastResponse{})
 		bcResList[i].Endpoint = endpoints[i]
 		go func(i int) {
 			defer wg.Done()
-			res, err := tcpRequest(endpoints[i], timeout, data)
+			res, err := tcpCall(endpoints[i], timeout, data)
 			if err != nil {
 				bcResList[i].Error = err
 				return
@@ -298,7 +285,7 @@ func tcpBroadcast(endpoints []string, timeout time.Duration, data []byte) []Broa
 	return bcResList
 }
 
-func tcpRequest(endpoint string, timeout time.Duration, data []byte) ([]byte, error) {
+func tcpCall(endpoint string, timeout time.Duration, data []byte) ([]byte, error) {
 	if len(endpoint) == 0 {
 		return nil, errors.New("endpoint nil")
 	}

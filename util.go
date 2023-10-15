@@ -51,3 +51,11 @@ func unGzip(data []byte) ([]byte, error) {
 	}
 	return out.Bytes(), nil
 }
+
+func copyStringSlice(src []string) []string {
+	return append([]string(nil), src...)
+}
+
+func copyMethodFuncSlice(src []MethodFunc) []MethodFunc {
+	return append([]MethodFunc(nil), src...)
+}
