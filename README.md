@@ -109,9 +109,11 @@ func testMiddleware2(ctx *comborpc.Context) {
   * `WriteJson`: 将对象序列化为Json格式字符串，并写入响应体
   * `WriteYaml`: 将对象序列化为Yaml格式字符串，并写入响应体
   * `WriteXml`: 将对象序列化为Xml格式字符串，并写入响应体
+  * `GetRemoteAddr`: 获取客户端ip地址
+  * `GetLocalAddr`: 获取本地ip地址
   * `GetCallMethod`: 获取当前被客户端调用的方法名
-  * `PutShareData`: 保存上下文共享数据
-  * `GetShareData`: 获取上下文共享数据
+  * `PutCache`: 保存上下文共享缓存
+  * `GetCache`: 获取上下文共享缓存
   * `Next`: 进入下一个方法（中间件相关）
   * `Abort`: 停止继续执行下一个方法（中间件相关）
 

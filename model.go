@@ -2,7 +2,6 @@ package comborpc
 
 import (
 	"net"
-	"sync/atomic"
 	"time"
 )
 
@@ -37,12 +36,14 @@ type MethodFunc func(ctx *Context)
 type LoadBalanceFunc func(endpoints []string) string
 
 type Context struct {
+	remoteAddr string
+	localAddr  string
 	callMethod string
 	input      string
 	output     string
 	index      int
 	methods    []MethodFunc
-	shareData  atomic.Value
+	cache      any
 }
 
 type CallOptions struct {

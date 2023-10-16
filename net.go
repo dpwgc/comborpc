@@ -157,11 +157,6 @@ func (s *tcpServe) processConnect(c *tcpConnect) error {
 	var wg sync.WaitGroup
 	wg.Add(len(requestList))
 	for i := 0; i < len(requestList); i++ {
-		if s.router.router[requestList[i].Method] == nil {
-			responseList[i].Error = "no method found"
-			wg.Done()
-			continue
-		}
 		go func(i int) {
 			defer func() {
 				handleErr := recover()
@@ -170,7 +165,13 @@ func (s *tcpServe) processConnect(c *tcpConnect) error {
 				}
 				wg.Done()
 			}()
+			if s.router.router[requestList[i].Method] == nil {
+				responseList[i].Error = "no method found"
+				return
+			}
 			ctx := Context{
+				remoteAddr: c.conn.RemoteAddr().String(),
+				localAddr:  c.conn.LocalAddr().String(),
 				callMethod: requestList[i].Method,
 				input:      requestList[i].Data,
 				index:      0,
