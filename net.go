@@ -170,9 +170,9 @@ func (s *tcpServe) processConnect(c *tcpConnect) error {
 				return
 			}
 			ctx := Context{
-				remoteAddr: c.conn.RemoteAddr().String(),
-				localAddr:  c.conn.LocalAddr().String(),
-				callMethod: requestList[i].Method,
+				RemoteAddr: c.conn.RemoteAddr().String(),
+				LocalAddr:  c.conn.LocalAddr().String(),
+				CallMethod: requestList[i].Method,
 				input:      requestList[i].Data,
 				index:      0,
 				methods:    copyMethodFuncSlice(s.router.middlewares),

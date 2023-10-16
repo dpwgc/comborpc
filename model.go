@@ -36,14 +36,14 @@ type MethodFunc func(ctx *Context)
 type LoadBalanceFunc func(endpoints []string) string
 
 type Context struct {
-	remoteAddr string
-	localAddr  string
-	callMethod string
-	input      string
-	output     string
-	index      int
-	methods    []MethodFunc
-	cache      any
+	RemoteAddr  string
+	LocalAddr   string
+	CallMethod  string
+	CustomCache any
+	input       string
+	output      string
+	index       int
+	methods     []MethodFunc
 }
 
 type CallOptions struct {

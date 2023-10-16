@@ -96,26 +96,6 @@ func (c *Context) Abort() {
 	c.index = len(c.methods) + 1
 }
 
-func (c *Context) GetCallMethod() string {
-	return c.callMethod
-}
-
-func (c *Context) GetRemoteAddr() string {
-	return c.remoteAddr
-}
-
-func (c *Context) GetLocalAddr() string {
-	return c.localAddr
-}
-
-func (c *Context) GetCache() any {
-	return c.cache
-}
-
-func (c *Context) PutCache(v any) {
-	c.cache = v
-}
-
 func (c *Context) ReadString() string {
 	return c.input
 }
