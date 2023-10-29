@@ -1,6 +1,8 @@
 # ComboRPC
 
-## 基于TCP + MessagePack的简易RPC框架，支持自定义中间件、自定义负载均衡，支持单个请求调用多个方法，支持广播服务。
+## 基于TCP + MessagePack的简易RPC框架，支持单个请求调用多个方法，支持自定义中间件、自定义负载均衡，支持广播服务。
+
+![store](img/explain.png)
 
 ***
 
