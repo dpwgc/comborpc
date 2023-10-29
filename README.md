@@ -114,6 +114,8 @@ type TestResponse struct {
 // 中间件1
 func testMiddleware1(ctx *comborpc.Context) {
     fmt.Println("testMiddleware1 start")
+    // 获取请求参数中的A1字段
+    fmt.Println("A1: ", ctx.Param("A1"))
     ctx.Next()
     fmt.Println("testMiddleware1 end")
 }
@@ -124,6 +126,7 @@ func testMiddleware1(ctx *comborpc.Context) {
 * `Context`: 上下文
   * `Bind`: 将请求数据解析并绑定在指定结构体上
   * `Read`: 直接读取请求体，自行解析
+  * `Param`: 根据字段名获取某个请求参数的值
   * `Write`: 编写响应体
   * `RemoteAddr`: 客户端ip地址
   * `LocalAddr`: 本地ip地址
@@ -195,6 +198,9 @@ func demoComboRequest() {
   // 遍历响应列表
   for _, response := range responseList {
   
+      // 可以通过这种方式获取某个响应参数
+      // code := response.Param("Code").(uint8) ---> code = 200
+  
       // 将每个响应列表子项数据绑定到TestResponse结构体上
       responseBind := TestResponse{}
       err = response.Bind(&responseBind)
@@ -228,6 +234,7 @@ func demoComboRequest() {
   * `LoadBalance`: 自定义负载均衡方法
 * `Response`: 响应体
   * `Bind`: 将响应数据解析并绑定在指定结构体上
+  * `Param`: 根据字段名获取某个响应参数的值
   * `Success`: 判断是否响应成功
 
 ### 自定义负载均衡器

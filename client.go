@@ -140,7 +140,7 @@ func (c *SingleCall) Broadcast() ([]BroadcastResponse, error) {
 }
 
 func (r *Response) Bind(v any) error {
-	if len(r.Error) > 0 {
+	if !r.Success() {
 		return errors.New(fmt.Sprintf("response error: %s", r.Error))
 	}
 	bytes, err := msgpack.Marshal(r.Data)
@@ -148,6 +148,21 @@ func (r *Response) Bind(v any) error {
 		return err
 	}
 	return msgpack.Unmarshal(bytes, v)
+}
+
+func (r *Response) Param(key string) any {
+	if !r.Success() {
+		return nil
+	}
+	maps, ok := r.Data.(map[string]interface{})
+	if ok {
+		if maps == nil || len(maps) == 0 {
+			return nil
+		}
+		return maps[key]
+	} else {
+		return nil
+	}
 }
 
 func (r *Response) Success() bool {

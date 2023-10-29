@@ -106,6 +106,18 @@ func (c *Context) Bind(v any) error {
 	return msgpack.Unmarshal(bytes, v)
 }
 
+func (c *Context) Param(key string) any {
+	maps, ok := c.Read().(map[string]interface{})
+	if ok {
+		if maps == nil || len(maps) == 0 {
+			return nil
+		}
+		return maps[key]
+	} else {
+		return nil
+	}
+}
+
 func (c *Context) Write(data any) {
 	c.output = data
 }
