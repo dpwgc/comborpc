@@ -63,18 +63,14 @@ func Test(t *testing.T) {
 
 	// 发送单个调度请求
 	fmt.Println("-----\n4. send single request")
-	response, err := comborpc.NewSingleCall(comborpc.CallOptions{
+	responseBind := TestResponse{}
+	err = comborpc.NewSingleCall(comborpc.CallOptions{
 		Endpoints: []string{endpoint},
 	}).SetRequest("testMethod3", TestRequest{
 		A1: "hello world 3",
 		A2: 1003,
 		A3: 54.1,
-	}).Do()
-	if err != nil {
-		panic(err)
-	}
-	responseBind := TestResponse{}
-	err = response.Bind(&responseBind)
+	}).DoAndBind(&responseBind)
 	if err != nil {
 		panic(err)
 	}

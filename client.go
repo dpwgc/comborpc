@@ -116,6 +116,21 @@ func (c *SingleCall) Do() (Response, error) {
 	return resList[0], nil
 }
 
+func (c *SingleCall) DoAndBind(v any) error {
+	err := requestValid(c.requests, c.endpoints)
+	if err != nil {
+		return err
+	}
+	resList, err := tcpCall(c.loadBalance(c.endpoints), c.timeout, c.requests)
+	if err != nil {
+		return err
+	}
+	if len(resList) == 0 {
+		return nil
+	}
+	return resList[0].Bind(v)
+}
+
 func (c *SingleCall) Broadcast() ([]BroadcastResponse, error) {
 	err := requestValid(c.requests, c.endpoints)
 	if err != nil {

@@ -6,6 +6,7 @@
 
 ### 项目结构
 
+* `test/demo.test.go` 测试程序
 * `client.go`: 客户端相关
 * `server.go`: 服务端相关
 * `net.go`: 基础网络服务（TCP）
@@ -67,22 +68,26 @@ func demoServe() {
 ### 服务端方法编写示例
 
 ```
-// 样例方法1
+// 方法1
 func testMethod1(ctx *comborpc.Context) {
-	// ctx.Read() 直接读取请求体，自行解析
-	// 将请求数据绑定在TestRequest结构体上
-	request := TestRequest{}
-	err := ctx.Bind(&request)
-	if err != nil {
-		panic(err)
-	}
-	// 打印请求体
-	fmt.Println("testMethod1 request:", "A1:", request.A1, "A2:", request.A2, "A3:", request.A3)
-	// 返回数据给客户端
-	ctx.Write(TestResponse{
-		Code: 200,
-		Msg:  "testMethod1 return ok",
-	})
+
+    // ctx.Read() 直接读取请求体，自行解析
+    
+    // 将请求数据绑定在TestRequest结构体上
+    request := TestRequest{}
+    err := ctx.Bind(&request)
+    if err != nil {
+        panic(err)
+    }
+    
+    // 打印请求体
+    fmt.Println("testMethod1 request:", "A1:", request.A1, "A2:", request.A2, "A3:", request.A3)
+    
+    // 返回数据给客户端
+    ctx.Write(TestResponse{
+        Code: 200,
+        Msg:  "testMethod1 return ok",
+    })
 }
 ```
 
@@ -112,13 +117,6 @@ func testMiddleware1(ctx *comborpc.Context) {
     ctx.Next()
     fmt.Println("testMiddleware1 end")
 }
-
-// 中间件2
-func testMiddleware2(ctx *comborpc.Context) {
-    fmt.Println("testMiddleware2 start")
-    ctx.Next()
-    fmt.Println("testMiddleware2 end")
-}
 ```
 
 ### 服务端上下文方法列表
@@ -141,6 +139,35 @@ func testMiddleware2(ctx *comborpc.Context) {
 router.Close()
 ```
 
+### 客户端发送单一请求
+
+#### 一次请求只调用一个方法，返回一个Response对象
+
+```
+func demoSingleRequest() {
+  
+  // 接收响应结果的结构体
+  responseBind := TestResponse{}
+
+  // 构建并发送请求，同时将响应结果绑定到TestResponse结构体上
+  err := comborpc.NewSingleCall(comborpc.CallOptions{
+      Endpoints: []string{"0.0.0.0:8001"},
+  }).SetRequest("testMethod3", TestRequest{
+      A1: "hello world 3",
+      A2: 1003,
+      A3: 54.1,
+  }).DoAndBind(&responseBind)
+
+  // 抛错
+  if err != nil {
+      panic(err)
+  }
+
+  // 打印响应结果
+  fmt.Println("single response:", "code:", responseBind.Code, "msg:", responseBind.Msg)
+}
+```
+
 ### 客户端发送组合请求
 
 #### 一次请求同时调用两个方法（testMethod1、testMethod2），返回一个Response数组
@@ -160,12 +187,10 @@ func demoComboRequest() {
       A2: 1002,
       A3: 67.5,
   }).Do()
+  
   if err != nil {
       panic(err)
   }
-	
-  // 获取响应体列表
-  fmt.Println("combo response list:", responseList)
 	
   // 遍历响应列表
   for _, response := range responseList {
@@ -183,32 +208,6 @@ func demoComboRequest() {
 }
 ```
 
-### 客户端发送单一请求
-
-#### 一次请求只调用一个方法，返回一个Response对象
-
-```
-func demoSingleRequest() {
-
-  // 构建并发送请求
-  response, err := comborpc.NewSingleCall(comborpc.CallOptions{
-      Endpoints: []string{"0.0.0.0:8001"},
-  }).SetRequest("testMethod3", TestRequest{
-      A1: "hello world 3",
-      A2: 1003,
-      A3: 54.1,
-  }).Do()
-
-  // 抛错
-  if err != nil {
-      panic(err)
-  }
-
-  // 打印响应结果
-  fmt.Println("single response:", response)
-}
-```
-
 ### 客户端方法列表
 
 * `NewComboCall`: 创建ComboCall对象
@@ -216,12 +215,13 @@ func demoSingleRequest() {
   * `AddRequest`: 添加请求体
   * `AddRequests`: 添加多个请求体
   * `Do`: 执行请求
-  * `Broadcast`: 广播请求
+  * `Broadcast`: 广播请求（给所有服务端地址发送请求）
 * `NewSingleCall`: 创建SingleCall对象
 * `SingleCall`: 单一调用
   * `SetRequest`: 设置请求体
   * `Do`: 执行请求
-  * `Broadcast`: 广播请求
+  * `DoAndBind`: 执行请求，并将响应数据绑定到指定结构体上
+  * `Broadcast`: 广播请求（给所有服务端地址发送请求）
 * `CallOptions`: 调用参数
   * `Endpoints`: 服务端地址列表
   * `Timeout`: 请求超时时间
@@ -232,19 +232,22 @@ func demoSingleRequest() {
 
 ### 自定义负载均衡器
 
-#### 自定义负载均衡方法
+#### 自定义负载均衡方法（样例）
 ```
 // 随机负载均衡处理方法
 func deomLoadBalance(endpoints []string) string {
-   rand.Seed(time.Now().Unix())
-   return endpoints[rand.Intn(len(endpoints))]
+    if len(endpoints) == 0 {
+        return ""
+    }
+    rand.Seed(time.Now().Unix())
+    return endpoints[rand.Intn(len(endpoints))]
 }
 ```
 #### 设置方法
 ```
 comborpc.NewComboCall(comborpc.CallOptions{
-   Endpoints: []string{"0.0.0.0:8001"},
-   LoadBalance: deomLoadBalance,
+    Endpoints: []string{"0.0.0.0:8001"},
+    LoadBalance: deomLoadBalance,
 })
 ```
 
@@ -255,7 +258,7 @@ comborpc.NewComboCall(comborpc.CallOptions{
 ```
 123
 ```
-* 3、客户端发送请求体（使用MessagePack序列化结构体，然后再用gzip压缩，Method为方法名，Data为传入该方法的数据）
+* 3、客户端发送请求体（使用MessagePack协议将结构体序列化成字节数组，然后再用gzip压缩。请求结构体：Method为方法名，Data为传入该方法的数据）
 ```json
 [
   {
@@ -281,7 +284,7 @@ comborpc.NewComboCall(comborpc.CallOptions{
 ```
 123
 ```
-* 6、服务端发送响应体（序列化与压缩方式与请求体相同，Error为报错内容，Data为响应数据，响应体数组排序与请求体数组一致）
+* 6、服务端发送响应体（序列化与压缩方式与请求体相同。响应结构体：Error为报错内容，Data为响应数据，响应体数组排序与请求体数组一致）
 ```json
 [
   {
