@@ -30,7 +30,11 @@ func convertedConnect(conn net.Conn) *tcpConnect {
 
 // tcp请求发送
 func (c *tcpConnect) send(body []byte) error {
-	bodyLen := len(body)
+	gzipBody, err := doGzip(body)
+	if err != nil {
+		return err
+	}
+	bodyLen := len(gzipBody)
 	bodyLenBytes := int64ToBytes(int64(bodyLen), TCPHeaderLen)
 	// 发送消息头（数据长度）
 	binLen, err := c.conn.Write(bodyLenBytes)
@@ -41,7 +45,7 @@ func (c *tcpConnect) send(body []byte) error {
 		return errors.New("header len not match")
 	}
 	// 发送消息体（数据包）
-	binLen, err = c.conn.Write(body)
+	binLen, err = c.conn.Write(gzipBody)
 	if err != nil {
 		return err
 	}
@@ -71,7 +75,11 @@ func (c *tcpConnect) read() ([]byte, error) {
 	if int64(binLen) != bodyLen {
 		return nil, errors.New("body len not match")
 	}
-	return body, nil
+	unGzipBody, err := unGzip(body)
+	if err != nil {
+		return nil, err
+	}
+	return unGzipBody, nil
 }
 
 func (c *tcpConnect) close() {
@@ -144,12 +152,8 @@ func (s *tcpServe) processConnect(c *tcpConnect) error {
 	if err != nil {
 		return err
 	}
-	unGzipBody, err := unGzip(body)
-	if err != nil {
-		return err
-	}
 	var requestList []Request
-	err = msgpack.Unmarshal(unGzipBody, &requestList)
+	err = msgpack.Unmarshal(body, &requestList)
 	if err != nil {
 		return err
 	}
@@ -194,9 +198,5 @@ func (s *tcpServe) processConnect(c *tcpConnect) error {
 	if err != nil {
 		return err
 	}
-	gzipResBody, err := doGzip(resBody)
-	if err != nil {
-		return err
-	}
-	return c.send(gzipResBody)
+	return c.send(resBody)
 }

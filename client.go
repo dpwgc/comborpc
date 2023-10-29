@@ -191,24 +191,16 @@ func tcpCall(endpoint string, timeout time.Duration, requests []Request) ([]Resp
 	if err != nil {
 		return nil, err
 	}
-	gzipData, err := doGzip(data)
-	if err != nil {
-		return nil, err
-	}
 	c, err := newConnect(endpoint, timeout)
 	if err != nil {
 		return nil, err
 	}
 	defer c.close()
-	err = c.send(gzipData)
+	err = c.send(data)
 	if err != nil {
 		return nil, err
 	}
-	gzipRes, err := c.read()
-	if err != nil {
-		return nil, err
-	}
-	res, err := unGzip(gzipRes)
+	res, err := c.read()
 	if err != nil {
 		return nil, err
 	}
