@@ -1,11 +1,9 @@
 package comborpc
 
 import (
-	"encoding/json"
-	"encoding/xml"
 	"errors"
 	"fmt"
-	"gopkg.in/yaml.v3"
+	"github.com/vmihailenco/msgpack/v5"
 	"math/rand"
 	"sync"
 	"time"
@@ -32,45 +30,12 @@ func NewComboCall(options CallOptions) *ComboCall {
 
 // AddRequest
 // append the request body
-func (c *ComboCall) AddRequest(request Request) *ComboCall {
-	c.requests = append(c.requests, request)
-	return c
-}
-func (c *ComboCall) AddStringRequest(method string, data string) *ComboCall {
-	return c.AddRequest(Request{
+func (c *ComboCall) AddRequest(method string, data any) *ComboCall {
+	c.requests = append(c.requests, Request{
 		Method: method,
 		Data:   data,
 	})
-}
-func (c *ComboCall) AddJsonRequest(method string, v any) *ComboCall {
-	data, err := json.Marshal(v)
-	if err != nil {
-		data = []byte("")
-	}
-	return c.AddRequest(Request{
-		Method: method,
-		Data:   string(data),
-	})
-}
-func (c *ComboCall) AddYamlRequest(method string, v any) *ComboCall {
-	data, err := yaml.Marshal(v)
-	if err != nil {
-		data = []byte("")
-	}
-	return c.AddRequest(Request{
-		Method: method,
-		Data:   string(data),
-	})
-}
-func (c *ComboCall) AddXmlRequest(method string, v any) *ComboCall {
-	data, err := xml.Marshal(v)
-	if err != nil {
-		data = []byte("")
-	}
-	return c.AddRequest(Request{
-		Method: method,
-		Data:   string(data),
-	})
+	return c
 }
 
 // AddRequests
@@ -87,20 +52,7 @@ func (c *ComboCall) Do() ([]Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	data, err := yaml.Marshal(c.requests)
-	if err != nil {
-		return nil, err
-	}
-	res, err := tcpCall(c.loadBalance(c.endpoints), c.timeout, data)
-	if err != nil {
-		return nil, err
-	}
-	var resList []Response
-	err = yaml.Unmarshal(res, &resList)
-	if err != nil {
-		return nil, err
-	}
-	return resList, nil
+	return tcpCall(c.loadBalance(c.endpoints), c.timeout, c.requests)
 }
 
 func (c *ComboCall) Broadcast() ([]BroadcastResponse, error) {
@@ -108,11 +60,7 @@ func (c *ComboCall) Broadcast() ([]BroadcastResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	data, err := yaml.Marshal(c.requests)
-	if err != nil {
-		return nil, err
-	}
-	return tcpBroadcast(c.endpoints, c.timeout, data), nil
+	return tcpBroadcast(c.endpoints, c.timeout, c.requests), nil
 }
 
 // NewSingleCall
@@ -136,49 +84,19 @@ func NewSingleCall(options CallOptions) *SingleCall {
 
 // SetRequest
 // set a request body
-func (c *SingleCall) SetRequest(request Request) *SingleCall {
+func (c *SingleCall) SetRequest(method string, data any) *SingleCall {
 	if len(c.requests) == 0 {
-		c.requests = append(c.requests, request)
+		c.requests = append(c.requests, Request{
+			Method: method,
+			Data:   data,
+		})
 	} else {
-		c.requests[0] = request
+		c.requests[0] = Request{
+			Method: method,
+			Data:   data,
+		}
 	}
 	return c
-}
-func (c *SingleCall) SetStringRequest(method string, data string) *SingleCall {
-	return c.SetRequest(Request{
-		Method: method,
-		Data:   data,
-	})
-}
-func (c *SingleCall) SetJsonRequest(method string, v any) *SingleCall {
-	data, err := json.Marshal(v)
-	if err != nil {
-		data = []byte("")
-	}
-	return c.SetRequest(Request{
-		Method: method,
-		Data:   string(data),
-	})
-}
-func (c *SingleCall) SetYamlRequest(method string, v any) *SingleCall {
-	data, err := yaml.Marshal(v)
-	if err != nil {
-		data = []byte("")
-	}
-	return c.SetRequest(Request{
-		Method: method,
-		Data:   string(data),
-	})
-}
-func (c *SingleCall) SetXmlRequest(method string, v any) *SingleCall {
-	data, err := xml.Marshal(v)
-	if err != nil {
-		data = []byte("")
-	}
-	return c.SetRequest(Request{
-		Method: method,
-		Data:   string(data),
-	})
 }
 
 // Do
@@ -188,16 +106,7 @@ func (c *SingleCall) Do() (Response, error) {
 	if err != nil {
 		return Response{}, err
 	}
-	data, err := yaml.Marshal(c.requests)
-	if err != nil {
-		return Response{}, err
-	}
-	res, err := tcpCall(c.loadBalance(c.endpoints), c.timeout, data)
-	if err != nil {
-		return Response{}, err
-	}
-	var resList []Response
-	err = yaml.Unmarshal(res, &resList)
+	resList, err := tcpCall(c.loadBalance(c.endpoints), c.timeout, c.requests)
 	if err != nil {
 		return Response{}, err
 	}
@@ -212,30 +121,25 @@ func (c *SingleCall) Broadcast() ([]BroadcastResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	data, err := yaml.Marshal(c.requests)
-	if err != nil {
-		return nil, err
-	}
-	return tcpBroadcast(c.endpoints, c.timeout, data), nil
+	return tcpBroadcast(c.endpoints, c.timeout, c.requests), nil
 }
 
-func (r *Response) ParseJson(v any) error {
+func (r *Response) Bind(v any) error {
 	if len(r.Error) > 0 {
 		return errors.New(fmt.Sprintf("response error: %s", r.Error))
 	}
-	return json.Unmarshal([]byte(r.Data), v)
+	bytes, err := msgpack.Marshal(r.Data)
+	if err != nil {
+		return err
+	}
+	return msgpack.Unmarshal(bytes, v)
 }
-func (r *Response) ParseYaml(v any) error {
+
+func (r *Response) Success() bool {
 	if len(r.Error) > 0 {
-		return errors.New(fmt.Sprintf("response error: %s", r.Error))
+		return false
 	}
-	return yaml.Unmarshal([]byte(r.Data), v)
-}
-func (r *Response) ParseXml(v any) error {
-	if len(r.Error) > 0 {
-		return errors.New(fmt.Sprintf("response error: %s", r.Error))
-	}
-	return xml.Unmarshal([]byte(r.Data), v)
+	return true
 }
 
 func defaultLoadBalance(endpoints []string) string {
@@ -259,7 +163,7 @@ func requestValid(requests []Request, endpoints []string) error {
 	return nil
 }
 
-func tcpBroadcast(endpoints []string, timeout time.Duration, data []byte) []BroadcastResponse {
+func tcpBroadcast(endpoints []string, timeout time.Duration, requests []Request) []BroadcastResponse {
 	var bcResList = make([]BroadcastResponse, len(endpoints))
 	wg := sync.WaitGroup{}
 	wg.Add(len(endpoints))
@@ -267,13 +171,7 @@ func tcpBroadcast(endpoints []string, timeout time.Duration, data []byte) []Broa
 		bcResList[i].Endpoint = endpoints[i]
 		go func(i int) {
 			defer wg.Done()
-			res, err := tcpCall(endpoints[i], timeout, data)
-			if err != nil {
-				bcResList[i].Error = err
-				return
-			}
-			var resList []Response
-			err = yaml.Unmarshal(res, &resList)
+			resList, err := tcpCall(endpoints[i], timeout, requests)
 			if err != nil {
 				bcResList[i].Error = err
 				return
@@ -285,9 +183,13 @@ func tcpBroadcast(endpoints []string, timeout time.Duration, data []byte) []Broa
 	return bcResList
 }
 
-func tcpCall(endpoint string, timeout time.Duration, data []byte) ([]byte, error) {
+func tcpCall(endpoint string, timeout time.Duration, requests []Request) ([]Response, error) {
 	if len(endpoint) == 0 {
 		return nil, errors.New("endpoint nil")
+	}
+	data, err := msgpack.Marshal(requests)
+	if err != nil {
+		return nil, err
 	}
 	gzipData, err := doGzip(data)
 	if err != nil {
@@ -302,9 +204,18 @@ func tcpCall(endpoint string, timeout time.Duration, data []byte) ([]byte, error
 	if err != nil {
 		return nil, err
 	}
-	res, err := c.read()
+	gzipRes, err := c.read()
 	if err != nil {
 		return nil, err
 	}
-	return unGzip(res)
+	res, err := unGzip(gzipRes)
+	if err != nil {
+		return nil, err
+	}
+	var resList []Response
+	err = msgpack.Unmarshal(res, &resList)
+	if err != nil {
+		return nil, err
+	}
+	return resList, nil
 }

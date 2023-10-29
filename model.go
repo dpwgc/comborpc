@@ -40,8 +40,8 @@ type Context struct {
 	LocalAddr   string
 	CallMethod  string
 	CustomCache any
-	input       string
-	output      string
+	input       any
+	output      any
 	index       int
 	methods     []MethodFunc
 }
@@ -68,13 +68,13 @@ type SingleCall struct {
 }
 
 type Request struct {
-	Method string `yaml:"m"`
-	Data   string `yaml:"d,omitempty"`
+	Method string
+	Data   any
 }
 
 type Response struct {
-	Error string `yaml:"e,omitempty"`
-	Data  string `yaml:"d,omitempty"`
+	Error string
+	Data  any
 }
 
 type BroadcastResponse struct {

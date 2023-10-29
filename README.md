@@ -1,6 +1,6 @@
 # ComboRPC
 
-## 基于TCP的简易RPC框架，支持自定义中间件、自定义负载均衡，支持单个请求调用多个方法，支持广播服务。
+## 基于TCP + MessagePack的简易RPC框架，支持自定义中间件、自定义负载均衡，支持单个请求调用多个方法，支持广播服务。
 
 ***
 
@@ -67,16 +67,39 @@ func demoServe() {
 ### 服务端方法编写示例
 
 ```
-// 方法1
+// 样例方法1
 func testMethod1(ctx *comborpc.Context) {
-    fmt.Println("testMethod1 request:", ctx.ReadString())
-    ctx.WriteString("hello world 1")
+	// ctx.Read() 直接读取请求体，自行解析
+	// 将请求数据绑定在TestRequest结构体上
+	request := TestRequest{}
+	err := ctx.Bind(&request)
+	if err != nil {
+		panic(err)
+	}
+	// 打印请求体
+	fmt.Println("testMethod1 request:", "A1:", request.A1, "A2:", request.A2, "A3:", request.A3)
+	// 返回数据给客户端
+	ctx.Write(TestResponse{
+		Code: 200,
+		Msg:  "testMethod1 return ok",
+	})
+}
+```
+
+### 样例代码中用到的请求与响应结构体
+
+```
+// 请求
+type TestRequest struct {
+    A1 string
+    A2 int64
+    A3 float64
 }
 
-// 方法2
-func testMethod2(ctx *comborpc.Context) {
-    fmt.Println("testMethod2 request:", ctx.ReadString())
-    ctx.WriteString("hello world 2")
+// 响应
+type TestResponse struct {
+    Code int
+    Msg  string
 }
 ```
 
@@ -101,14 +124,9 @@ func testMiddleware2(ctx *comborpc.Context) {
 ### 服务端上下文方法列表
 
 * `Context`: 上下文
-  * `ReadString`: 从请求体中读取字符串
-  * `ReadJson`: 从请求体中读取Json格式字符串，将其解析为对象
-  * `ReadYaml`: 从请求体中读取Yaml格式字符串，将其解析为对象
-  * `ReadXml`: 从请求体中读取Xml格式字符串，将其解析为对象
-  * `WriteString`: 将字符串写入响应体
-  * `WriteJson`: 将对象序列化为Json格式字符串，并写入响应体
-  * `WriteYaml`: 将对象序列化为Yaml格式字符串，并写入响应体
-  * `WriteXml`: 将对象序列化为Xml格式字符串，并写入响应体
+  * `Bind`: 将请求数据解析并绑定在指定结构体上
+  * `Read`: 直接读取请求体，自行解析
+  * `Write`: 编写响应体
   * `RemoteAddr`: 客户端ip地址
   * `LocalAddr`: 本地ip地址
   * `CallMethod`: 当前被客户端调用的方法名
@@ -130,24 +148,38 @@ router.Close()
 ```
 func demoComboRequest() {
 
-    // 构建并发送请求
-    responseList, err := comborpc.NewComboCall(comborpc.CallOptions{
-        Endpoints: []string{"0.0.0.0:8001"},
-    }).AddRequest(comborpc.Request{
-        Method: "testMethod1",
-        Data:   "test request data 1",
-    }).AddRequest(comborpc.Request{
-        Method: "testMethod2",
-        Data:   "test request data 2",
-    }).Do()
-
-    // 抛错
-    if err != nil {
-        panic(err)
-    }
-
-    // 响应结果打印
-    fmt.Println("combo response list:", responseList)
+  // 构建并发送请求
+  responseList, err := comborpc.NewComboCall(comborpc.CallOptions{
+      Endpoints: []string{"0.0.0.0:8001"},
+  }).AddRequest("testMethod1", TestRequest{
+      A1: "hello world 1",
+      A2: 1001,
+      A3: 89.2,
+  }).AddRequest("testMethod2", TestRequest{
+      A1: "hello world 2",
+      A2: 1002,
+      A3: 67.5,
+  }).Do()
+  if err != nil {
+      panic(err)
+  }
+	
+  // 获取响应体列表
+  fmt.Println("combo response list:", responseList)
+	
+  // 遍历响应列表
+  for _, response := range responseList {
+  
+      // 将每个响应列表子项数据绑定到TestResponse结构体上
+      responseBind := TestResponse{}
+      err = response.Bind(&responseBind)
+      if err != nil {
+          panic(err)
+      }
+		
+      // 打印每个响应结果
+      fmt.Println("combo response item:", "code:", responseBind.Code, "msg:", responseBind.Msg)
+  }
 }
 ```
 
@@ -158,21 +190,22 @@ func demoComboRequest() {
 ```
 func demoSingleRequest() {
 
-    // 构建并发送请求
-    response, err := comborpc.NewSingleCall(comborpc.CallOptions{
-        Endpoints: []string{"0.0.0.0:8001"},
-    }).SetRequest(comborpc.Request{
-        Method: "testMethod1",
-        Data:   "testData1",
-    }).Do()
+  // 构建并发送请求
+  response, err := comborpc.NewSingleCall(comborpc.CallOptions{
+      Endpoints: []string{"0.0.0.0:8001"},
+  }).SetRequest("testMethod3", TestRequest{
+      A1: "hello world 3",
+      A2: 1003,
+      A3: 54.1,
+  }).Do()
 
-    // 抛错
-    if err != nil {
-        panic(err)
-    }
+  // 抛错
+  if err != nil {
+      panic(err)
+  }
 
-    // 响应结果打印
-    fmt.Println("single response:", response)
+  // 打印响应结果
+  fmt.Println("single response:", response)
 }
 ```
 
@@ -182,19 +215,11 @@ func demoSingleRequest() {
 * `ComboCall`: 组合调用
   * `AddRequest`: 添加请求体
   * `AddRequests`: 添加多个请求体
-  * `AddStringRequest`: 添加请求体（传入普通字符串）
-  * `AddJsonRequest`: 添加请求体（将传入对象序列化成Json字符串）
-  * `AddYamlRequest`: 添加请求体（将传入对象序列化成Yaml字符串）
-  * `AddXmlRequest`: 添加请求体（将传入对象序列化成Xml字符串）
   * `Do`: 执行请求
   * `Broadcast`: 广播请求
 * `NewSingleCall`: 创建SingleCall对象
 * `SingleCall`: 单一调用
   * `SetRequest`: 设置请求体
-  * `SetStringRequest`: 设置请求体（传入普通字符串）
-  * `SetJsonRequest`: 设置请求体（将传入对象序列化成Json字符串）
-  * `SetYamlRequest`: 设置请求体（将传入对象序列化成Yaml字符串）
-  * `SetXmlRequest`: 设置请求体（将传入对象序列化成Xml字符串）
   * `Do`: 执行请求
   * `Broadcast`: 广播请求
 * `CallOptions`: 调用参数
@@ -202,9 +227,8 @@ func demoSingleRequest() {
   * `Timeout`: 请求超时时间
   * `LoadBalance`: 自定义负载均衡方法
 * `Response`: 响应体
-  * `ParseJson`: 将Json字符串格式的响应数据解析为对象
-  * `ParseYaml`: 将Yaml字符串格式的响应数据解析为对象
-  * `ParseXml`: 将Xml字符串格式的响应数据解析为对象
+  * `Bind`: 将响应数据解析并绑定在指定结构体上
+  * `Success`: 判断是否响应成功
 
 ### 自定义负载均衡器
 
@@ -229,25 +253,52 @@ comborpc.NewComboCall(comborpc.CallOptions{
 * 1、建立TCP连接
 * 2、客户端发送8位的请求头（内容是请求体长度，int64类型）
 ```
-95
+123
 ```
-* 3、客户端发送请求体（yaml格式数组字符串，gzip压缩，m为调用方法名，d为请求数据）
-```yaml
-- m: testMethod1
-  d: '{"A":"test","B":"test"}'
-- m: testMethod2
-  d: '{"A":"test","B":"test"}'
+* 3、客户端发送请求体（使用MessagePack序列化结构体，然后再用gzip压缩，Method为方法名，Data为传入该方法的数据）
+```json
+[
+  {
+    "Method": "testMethod1",
+    "Data": {
+      "A1": "hello world 1",
+      "A2": 1001,
+      "A3": 89.2
+    }
+  },
+  {
+    "Method": "testMethod2",
+    "Data": {
+      "A1": "hello world 2",
+      "A2": 1002,
+      "A3": 67.5
+    }
+  }
+]
 ```
-* 4、服务端并发执行方法
+* 4、服务端解析请求体 -> 并发执行方法
 * 5、服务端发送响应头（内容是响应体长度，int64类型）
 ```
-73
+123
 ```
-* 6、服务端发送响应体（yaml格式数组字符串，gzip压缩，e为报错内容，d为响应数据，响应体数组排序与请求体数组一致）
-```yaml
-- e: 
-  d: '{"A":"test","B":"test"}'
-- e: 
-  d: '{"A":"test","B":"test"}'
+* 6、服务端发送响应体（序列化与压缩方式与请求体相同，Error为报错内容，Data为响应数据，响应体数组排序与请求体数组一致）
+```json
+[
+  {
+    "Error": "",
+    "Data": {
+      "Code": 200,
+      "Msg": "testMethod1 return ok"
+    }
+  },
+  {
+    "Error": "",
+    "Data": {
+      "Code": 200,
+      "Msg": "testMethod2 return ok"
+    }
+  }
+]
 ```
-* 7、断开TCP连接
+* 7、客户端接收响应体
+* 8、断开TCP连接

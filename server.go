@@ -1,9 +1,7 @@
 package comborpc
 
 import (
-	"encoding/json"
-	"encoding/xml"
-	"gopkg.in/yaml.v3"
+	"github.com/vmihailenco/msgpack/v5"
 	"time"
 )
 
@@ -96,49 +94,18 @@ func (c *Context) Abort() {
 	c.index = len(c.methods) + 1
 }
 
-func (c *Context) ReadString() string {
+func (c *Context) Read() any {
 	return c.input
 }
 
-func (c *Context) ReadJson(v any) error {
-	return json.Unmarshal([]byte(c.input), v)
+func (c *Context) Bind(v any) error {
+	bytes, err := msgpack.Marshal(c.Read())
+	if err != nil {
+		return err
+	}
+	return msgpack.Unmarshal(bytes, v)
 }
 
-func (c *Context) ReadYaml(v any) error {
-	return yaml.Unmarshal([]byte(c.input), v)
-}
-
-func (c *Context) ReadXml(v any) error {
-	return xml.Unmarshal([]byte(c.input), v)
-}
-
-func (c *Context) WriteString(data string) {
+func (c *Context) Write(data any) {
 	c.output = data
-}
-
-func (c *Context) WriteJson(v any) error {
-	data, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-	c.output = string(data)
-	return nil
-}
-
-func (c *Context) WriteYaml(v any) error {
-	data, err := yaml.Marshal(v)
-	if err != nil {
-		return err
-	}
-	c.output = string(data)
-	return nil
-}
-
-func (c *Context) WriteXml(v any) error {
-	data, err := xml.Marshal(v)
-	if err != nil {
-		return err
-	}
-	c.output = string(data)
-	return nil
 }

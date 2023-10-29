@@ -3,7 +3,7 @@ package comborpc
 import (
 	"errors"
 	"fmt"
-	"gopkg.in/yaml.v3"
+	"github.com/vmihailenco/msgpack/v5"
 	"log"
 	"net"
 	"sync"
@@ -149,7 +149,7 @@ func (s *tcpServe) processConnect(c *tcpConnect) error {
 		return err
 	}
 	var requestList []Request
-	err = yaml.Unmarshal(unGzipBody, &requestList)
+	err = msgpack.Unmarshal(unGzipBody, &requestList)
 	if err != nil {
 		return err
 	}
@@ -190,7 +190,7 @@ func (s *tcpServe) processConnect(c *tcpConnect) error {
 		}(i)
 	}
 	wg.Wait()
-	resBody, err := yaml.Marshal(responseList)
+	resBody, err := msgpack.Marshal(responseList)
 	if err != nil {
 		return err
 	}
