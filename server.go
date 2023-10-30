@@ -94,30 +94,19 @@ func (c *Context) Abort() {
 	c.index = len(c.methods) + 1
 }
 
-func (c *Context) Read() any {
+func (c *Context) Read() []byte {
 	return c.input
 }
 
 func (c *Context) Bind(v any) error {
-	bytes, err := msgpack.Marshal(c.Read())
+	return msgpack.Unmarshal(c.Read(), v)
+}
+
+func (c *Context) Write(obj any) error {
+	marshal, err := msgpack.Marshal(obj)
 	if err != nil {
 		return err
 	}
-	return msgpack.Unmarshal(bytes, v)
-}
-
-func (c *Context) Param(key string) any {
-	maps, ok := c.Read().(map[string]interface{})
-	if ok {
-		if maps == nil || len(maps) == 0 {
-			return nil
-		}
-		return maps[key]
-	} else {
-		return nil
-	}
-}
-
-func (c *Context) Write(data any) {
-	c.output = data
+	c.output = marshal
+	return nil
 }

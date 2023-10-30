@@ -40,8 +40,8 @@ type Context struct {
 	LocalAddr   string
 	CallMethod  string
 	CustomCache any
-	input       any
-	output      any
+	input       []byte
+	output      []byte
 	index       int
 	methods     []MethodFunc
 }
@@ -53,10 +53,11 @@ type CallOptions struct {
 }
 
 type callBase struct {
-	requests    []Request
+	requests    []request
 	endpoints   []string
 	timeout     time.Duration
 	loadBalance LoadBalanceFunc
+	buildError  error
 }
 
 type ComboCall struct {
@@ -67,14 +68,14 @@ type SingleCall struct {
 	callBase
 }
 
-type Request struct {
-	Method string
-	Data   any
+type request struct {
+	Method string `msg:"m" msgpack:"m"`
+	Data   []byte `msg:"d" msgpack:"d"`
 }
 
 type Response struct {
-	Error string
-	Data  any
+	Error string `msg:"e" msgpack:"e"`
+	Data  []byte `msg:"d" msgpack:"d"`
 }
 
 type BroadcastResponse struct {

@@ -96,14 +96,14 @@ func testMethod1(ctx *comborpc.Context) {
 ### 样例代码中用到的请求与响应结构体
 
 ```
-// 请求
+// 请求体
 type TestRequest struct {
     A1 string
     A2 int64
     A3 float64
 }
 
-// 响应
+// 响应体
 type TestResponse struct {
     Code int
     Msg  string
@@ -116,8 +116,6 @@ type TestResponse struct {
 // 中间件1
 func testMiddleware1(ctx *comborpc.Context) {
     fmt.Println("testMiddleware1 start")
-    // 获取请求参数中的A1字段
-    fmt.Println("A1: ", ctx.Param("A1"))
     ctx.Next()
     fmt.Println("testMiddleware1 end")
 }
@@ -127,8 +125,7 @@ func testMiddleware1(ctx *comborpc.Context) {
 
 * `Context`: 上下文
   * `Bind`: 将请求数据解析并绑定在指定结构体上
-  * `Read`: 直接读取请求体，自行解析
-  * `Param`: 根据字段名获取某个请求参数的值
+  * `Read`: 直接读取请求体（经过msgpack序列化的字节数组）
   * `Write`: 编写响应体
   * `RemoteAddr`: 客户端ip地址
   * `LocalAddr`: 本地ip地址
@@ -200,9 +197,6 @@ func demoComboRequest() {
   // 遍历响应列表
   for _, response := range responseList {
   
-      // 可以通过这种方式获取某个响应参数
-      // code := response.Param("Code").(uint8) ---> code = 200
-  
       // 将每个响应列表子项数据绑定到TestResponse结构体上
       responseBind := TestResponse{}
       err = response.Bind(&responseBind)
@@ -221,7 +215,6 @@ func demoComboRequest() {
 * `NewComboCall`: 创建ComboCall对象
 * `ComboCall`: 组合调用
   * `AddRequest`: 添加请求体
-  * `AddRequests`: 添加多个请求体
   * `Do`: 执行请求
   * `Broadcast`: 广播请求（给所有服务端地址发送请求）
 * `NewSingleCall`: 创建SingleCall对象
@@ -236,7 +229,6 @@ func demoComboRequest() {
   * `LoadBalance`: 自定义负载均衡方法
 * `Response`: 响应体
   * `Bind`: 将响应数据解析并绑定在指定结构体上
-  * `Param`: 根据字段名获取某个响应参数的值
   * `Success`: 判断是否响应成功
 
 ### 自定义负载均衡器
@@ -267,20 +259,20 @@ comborpc.NewComboCall(comborpc.CallOptions{
 ```
 123
 ```
-* 3、客户端发送请求体（使用MessagePack协议将结构体序列化成字节数组，然后再用gzip压缩。请求结构体：Method为方法名，Data为传入该方法的数据）
+* 3、客户端发送请求体（使用MessagePack协议，先将每个'd'对象序列化成字节数组，再将整个消息序列化成字节数组，最后用gzip压缩。请求结构体：'m'为方法名，'d'为传入该方法的数据）
 ```json
 [
   {
-    "Method": "testMethod1",
-    "Data": {
+    "m": "testMethod1",
+    "d": {
       "A1": "hello world 1",
       "A2": 1001,
       "A3": 89.2
     }
   },
   {
-    "Method": "testMethod2",
-    "Data": {
+    "m": "testMethod2",
+    "d": {
       "A1": "hello world 2",
       "A2": 1002,
       "A3": 67.5
@@ -293,19 +285,19 @@ comborpc.NewComboCall(comborpc.CallOptions{
 ```
 123
 ```
-* 6、服务端发送响应体（序列化与压缩方式与请求体相同。响应结构体：Error为报错内容，Data为响应数据，响应体数组排序与请求体数组一致）
+* 6、服务端发送响应体（序列化与压缩方式与请求体相同。响应结构体：'e'为报错内容，'d'为响应数据，响应体数组排序与请求体数组一致）
 ```json
 [
   {
-    "Error": "",
-    "Data": {
+    "e": "",
+    "d": {
       "Code": 200,
       "Msg": "testMethod1 return ok"
     }
   },
   {
-    "Error": "",
-    "Data": {
+    "e": "",
+    "d": {
       "Code": 200,
       "Msg": "testMethod2 return ok"
     }

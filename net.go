@@ -152,7 +152,7 @@ func (s *tcpServe) processConnect(c *tcpConnect) error {
 	if err != nil {
 		return err
 	}
-	var requestList []Request
+	var requestList []request
 	err = msgpack.Unmarshal(body, &requestList)
 	if err != nil {
 		return err

@@ -30,25 +30,22 @@ func NewComboCall(options CallOptions) *ComboCall {
 
 // AddRequest
 // append the request body
-func (c *ComboCall) AddRequest(method string, data any) *ComboCall {
-	c.requests = append(c.requests, Request{
+func (c *ComboCall) AddRequest(method string, obj any) *ComboCall {
+	data, err := msgpack.Marshal(obj)
+	if err != nil {
+		c.buildError = err
+	}
+	c.requests = append(c.requests, request{
 		Method: method,
 		Data:   data,
 	})
 	return c
 }
 
-// AddRequests
-// append the request body
-func (c *ComboCall) AddRequests(requests ...Request) *ComboCall {
-	c.requests = append(c.requests, requests...)
-	return c
-}
-
 // Do
 // perform a send operation
 func (c *ComboCall) Do() ([]Response, error) {
-	err := requestValid(c.requests, c.endpoints)
+	err := requestValid(c.requests, c.endpoints, c.buildError)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +53,7 @@ func (c *ComboCall) Do() ([]Response, error) {
 }
 
 func (c *ComboCall) Broadcast() ([]BroadcastResponse, error) {
-	err := requestValid(c.requests, c.endpoints)
+	err := requestValid(c.requests, c.endpoints, c.buildError)
 	if err != nil {
 		return nil, err
 	}
@@ -84,14 +81,18 @@ func NewSingleCall(options CallOptions) *SingleCall {
 
 // SetRequest
 // set a request body
-func (c *SingleCall) SetRequest(method string, data any) *SingleCall {
+func (c *SingleCall) SetRequest(method string, obj any) *SingleCall {
+	data, err := msgpack.Marshal(obj)
+	if err != nil {
+		c.buildError = err
+	}
 	if len(c.requests) == 0 {
-		c.requests = append(c.requests, Request{
+		c.requests = append(c.requests, request{
 			Method: method,
 			Data:   data,
 		})
 	} else {
-		c.requests[0] = Request{
+		c.requests[0] = request{
 			Method: method,
 			Data:   data,
 		}
@@ -102,7 +103,7 @@ func (c *SingleCall) SetRequest(method string, data any) *SingleCall {
 // Do
 // perform a send operation
 func (c *SingleCall) Do() (Response, error) {
-	err := requestValid(c.requests, c.endpoints)
+	err := requestValid(c.requests, c.endpoints, c.buildError)
 	if err != nil {
 		return Response{}, err
 	}
@@ -117,7 +118,7 @@ func (c *SingleCall) Do() (Response, error) {
 }
 
 func (c *SingleCall) DoAndBind(v any) error {
-	err := requestValid(c.requests, c.endpoints)
+	err := requestValid(c.requests, c.endpoints, c.buildError)
 	if err != nil {
 		return err
 	}
@@ -132,7 +133,7 @@ func (c *SingleCall) DoAndBind(v any) error {
 }
 
 func (c *SingleCall) Broadcast() ([]BroadcastResponse, error) {
-	err := requestValid(c.requests, c.endpoints)
+	err := requestValid(c.requests, c.endpoints, c.buildError)
 	if err != nil {
 		return nil, err
 	}
@@ -143,26 +144,7 @@ func (r *Response) Bind(v any) error {
 	if !r.Success() {
 		return errors.New(fmt.Sprintf("response error: %s", r.Error))
 	}
-	bytes, err := msgpack.Marshal(r.Data)
-	if err != nil {
-		return err
-	}
-	return msgpack.Unmarshal(bytes, v)
-}
-
-func (r *Response) Param(key string) any {
-	if !r.Success() {
-		return nil
-	}
-	maps, ok := r.Data.(map[string]interface{})
-	if ok {
-		if maps == nil || len(maps) == 0 {
-			return nil
-		}
-		return maps[key]
-	} else {
-		return nil
-	}
+	return msgpack.Unmarshal(r.Data, v)
 }
 
 func (r *Response) Success() bool {
@@ -183,7 +165,10 @@ func defaultLoadBalance(endpoints []string) string {
 	return endpoints[rand.Intn(len(endpoints))]
 }
 
-func requestValid(requests []Request, endpoints []string) error {
+func requestValid(requests []request, endpoints []string, buildError error) error {
+	if buildError != nil {
+		return buildError
+	}
 	if len(requests) == 0 {
 		return errors.New("requests len = 0")
 	}
@@ -193,7 +178,7 @@ func requestValid(requests []Request, endpoints []string) error {
 	return nil
 }
 
-func tcpBroadcast(endpoints []string, timeout time.Duration, requests []Request) []BroadcastResponse {
+func tcpBroadcast(endpoints []string, timeout time.Duration, requests []request) []BroadcastResponse {
 	var bcResList = make([]BroadcastResponse, len(endpoints))
 	wg := sync.WaitGroup{}
 	wg.Add(len(endpoints))
@@ -213,7 +198,7 @@ func tcpBroadcast(endpoints []string, timeout time.Duration, requests []Request)
 	return bcResList
 }
 
-func tcpCall(endpoint string, timeout time.Duration, requests []Request) ([]Response, error) {
+func tcpCall(endpoint string, timeout time.Duration, requests []request) ([]Response, error) {
 	if len(endpoint) == 0 {
 		return nil, errors.New("endpoint nil")
 	}

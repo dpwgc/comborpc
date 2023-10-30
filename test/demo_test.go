@@ -48,7 +48,6 @@ func Test(t *testing.T) {
 		panic(err)
 	}
 	// 获取响应体列表
-	fmt.Println("combo response list:", responseList)
 	// 将每个响应体子项数据绑定到TestResponse结构体上
 	for _, response := range responseList {
 		responseBind := TestResponse{}
@@ -128,10 +127,13 @@ func testMethod1(ctx *comborpc.Context) {
 	// 打印请求体
 	fmt.Println("testMethod1 request:", "A1:", request.A1, "A2:", request.A2, "A3:", request.A3)
 	// 返回数据
-	ctx.Write(TestResponse{
+	err = ctx.Write(TestResponse{
 		Code: 200,
 		Msg:  "testMethod1 return ok",
 	})
+	if err != nil {
+		panic(err)
+	}
 }
 
 // 方法2
@@ -142,10 +144,13 @@ func testMethod2(ctx *comborpc.Context) {
 		panic(err)
 	}
 	fmt.Println("testMethod2 request:", "A1:", request.A1, "A2:", request.A2, "A3:", request.A3)
-	ctx.Write(TestResponse{
+	err = ctx.Write(TestResponse{
 		Code: 200,
 		Msg:  "testMethod2 return ok",
 	})
+	if err != nil {
+		panic(err)
+	}
 }
 
 // 方法3
@@ -156,8 +161,11 @@ func testMethod3(ctx *comborpc.Context) {
 		panic(err)
 	}
 	fmt.Println("testMethod3 request:", "A1:", request.A1, "A2:", request.A2, "A3:", request.A3)
-	ctx.Write(TestResponse{
+	err = ctx.Write(TestResponse{
 		Code: 200,
 		Msg:  "testMethod3 return ok",
 	})
+	if err != nil {
+		panic(err)
+	}
 }
