@@ -130,12 +130,14 @@ func (s *tcpServe) enableConsumer() {
 		if !ok && s.router.close {
 			return
 		}
-		func(c *tcpConnect) {
+		s.router.limit <- true
+		go func(c *tcpConnect) {
 			defer func() {
 				catchErr := recover()
 				if catchErr != nil {
 					log.Println(catchErr)
 				}
+				<-s.router.limit
 			}()
 			err := s.processConnect(c)
 			if err != nil {

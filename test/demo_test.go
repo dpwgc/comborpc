@@ -89,9 +89,9 @@ func Test(t *testing.T) {
 // 新建并启动测试服务端路由
 func enableTestRouter(endpoint string) {
 	router = comborpc.NewRouter(comborpc.RouterOptions{
-		Endpoint:    endpoint,
-		QueueLen:    1000,
-		ConsumerNum: 30,
+		Endpoint:     endpoint,
+		QueueLen:     1000,
+		MaxGoroutine: 300,
 	}).AddMiddlewares(testMiddleware1, testMiddleware2).
 		AddMethod("testMethod1", testMethod1).
 		AddMethod("testMethod2", testMethod2).

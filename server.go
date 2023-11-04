@@ -10,23 +10,23 @@ import (
 func NewRouter(options RouterOptions) *Router {
 	timeout := 1 * time.Minute
 	queueLen := 1000
-	consumerNum := 30
+	maxGoroutine := 300
 	if options.Timeout.Milliseconds() >= 1 {
 		timeout = options.Timeout
 	}
 	if options.QueueLen > 0 {
 		queueLen = options.QueueLen
 	}
-	if options.ConsumerNum > 0 {
-		consumerNum = options.ConsumerNum
+	if options.MaxGoroutine > 0 {
+		maxGoroutine = options.MaxGoroutine
 	}
 	return &Router{
-		endpoint:    options.Endpoint,
-		router:      make(map[string]MethodFunc),
-		queue:       make(chan *tcpConnect, queueLen),
-		consumerNum: consumerNum,
-		timeout:     timeout,
-		close:       false,
+		endpoint: options.Endpoint,
+		router:   make(map[string]MethodFunc),
+		queue:    make(chan *tcpConnect, queueLen),
+		limit:    make(chan bool, maxGoroutine),
+		timeout:  timeout,
+		close:    false,
 	}
 }
 
@@ -61,9 +61,7 @@ func (r *Router) Run() error {
 		r.Close()
 	}()
 	s := newTcpServe(r)
-	for i := 0; i < r.consumerNum; i++ {
-		go s.enableConsumer()
-	}
+	go s.enableConsumer()
 	return s.enableListener()
 }
 

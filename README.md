@@ -54,7 +54,7 @@ func demoServe() {
 * `comborpc.RouterOptions`: 路由设置结构体
   * `Endpoint`: 服务端地址
   * `QueueLen`: 连接队列长度
-  * `ConsumerNum`: 队列消费者数量
+  * `MaxGoroutine`: 最大协程数量
   * `Timeout`: 请求超时时间
 
 ### 方法`Method`编写示例

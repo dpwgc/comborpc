@@ -14,17 +14,17 @@ type tcpServe struct {
 }
 
 type RouterOptions struct {
-	Endpoint    string
-	QueueLen    int
-	ConsumerNum int
-	Timeout     time.Duration
+	Endpoint     string
+	QueueLen     int
+	MaxGoroutine int
+	Timeout      time.Duration
 }
 
 type Router struct {
 	endpoint    string
 	router      map[string]MethodFunc
 	queue       chan *tcpConnect
-	consumerNum int
+	limit       chan bool
 	timeout     time.Duration
 	listener    net.Listener
 	close       bool
