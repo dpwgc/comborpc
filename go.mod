@@ -1,6 +1,6 @@
 module github.com/dpwgc/comborpc
 
-go 1.18
+go 1.19
 
 require github.com/vmihailenco/msgpack/v5 v5.3.5
 
