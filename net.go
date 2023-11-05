@@ -154,15 +154,16 @@ func (s *tcpServe) processConnect(c *tcpConnect) error {
 	if err != nil {
 		return err
 	}
-	var requestList []request
-	err = msgpack.Unmarshal(body, &requestList)
+	var fr fullRequest
+	err = msgpack.Unmarshal(body, &fr)
 	if err != nil {
 		return err
 	}
-	var responseList = make([]Response, len(requestList))
+	requestsLen := len(fr.Requests)
+	var responseList = make([]Response, requestsLen)
 	var wg sync.WaitGroup
-	wg.Add(len(requestList))
-	for i := 0; i < len(requestList); i++ {
+	wg.Add(requestsLen)
+	for i := 0; i < requestsLen; i++ {
 		go func(i int) {
 			defer func() {
 				handleErr := recover()
@@ -171,26 +172,27 @@ func (s *tcpServe) processConnect(c *tcpConnect) error {
 				}
 				wg.Done()
 			}()
-			if s.router.router[requestList[i].Method] == nil {
+			if s.router.router[fr.Requests[i].Method] == nil {
 				responseList[i].Error = "no method found"
 				return
 			}
 			ctx := Context{
 				RemoteAddr: c.conn.RemoteAddr().String(),
 				LocalAddr:  c.conn.LocalAddr().String(),
-				CallMethod: requestList[i].Method,
-				input:      requestList[i].Data,
+				CallMethod: fr.Requests[i].Method,
+				headers:    fr.Headers,
+				input:      fr.Requests[i].Data,
 				index:      0,
 				methods:    copyMethodFuncSlice(s.router.middlewares),
 			}
 			if len(s.router.middlewares) > 0 {
-				ctx.methods = append(ctx.methods, s.router.router[requestList[i].Method])
+				ctx.methods = append(ctx.methods, s.router.router[fr.Requests[i].Method])
 				for ctx.index < len(ctx.methods) {
 					ctx.methods[ctx.index](&ctx)
 					ctx.index++
 				}
 			} else {
-				s.router.router[requestList[i].Method](&ctx)
+				s.router.router[fr.Requests[i].Method](&ctx)
 			}
 			responseList[i].Data = ctx.output
 		}(i)

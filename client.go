@@ -9,11 +9,14 @@ import (
 	"time"
 )
 
+// ----- ComboCall -----
+
 // NewComboCall
 // create a new composite call
 func NewComboCall(options CallOptions) *ComboCall {
 	c := &ComboCall{
 		callBase: callBase{
+			headers:     make(map[string]string, 3),
 			endpoints:   copyStringSlice(options.Endpoints),
 			loadBalance: defaultLoadBalance,
 			timeout:     1 * time.Minute,
@@ -42,6 +45,16 @@ func (c *ComboCall) AddRequest(method string, obj any) *ComboCall {
 	return c
 }
 
+func (c *ComboCall) PutHeader(key string, value string) *ComboCall {
+	c.headers[key] = value
+	return c
+}
+
+func (c *ComboCall) RemoveHeader(key string) *ComboCall {
+	delete(c.headers, key)
+	return c
+}
+
 // Do
 // perform a send operation
 func (c *ComboCall) Do() ([]Response, error) {
@@ -49,22 +62,17 @@ func (c *ComboCall) Do() ([]Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	return tcpCall(c.loadBalance(c.endpoints), c.timeout, c.requests)
+	return tcpCall(c.loadBalance(c.endpoints), c.timeout, c.requests, c.headers)
 }
 
-func (c *ComboCall) Broadcast() ([]BroadcastResponse, error) {
-	err := requestValid(c.requests, c.endpoints, c.buildError)
-	if err != nil {
-		return nil, err
-	}
-	return tcpBroadcast(c.endpoints, c.timeout, c.requests), nil
-}
+// ----- SingleCall -----
 
 // NewSingleCall
 // create a new single call
 func NewSingleCall(options CallOptions) *SingleCall {
 	c := &SingleCall{
 		callBase: callBase{
+			headers:     make(map[string]string, 3),
 			endpoints:   options.Endpoints,
 			loadBalance: defaultLoadBalance,
 			timeout:     1 * time.Minute,
@@ -100,6 +108,16 @@ func (c *SingleCall) SetRequest(method string, obj any) *SingleCall {
 	return c
 }
 
+func (c *SingleCall) PutHeader(key string, value string) *SingleCall {
+	c.headers[key] = value
+	return c
+}
+
+func (c *SingleCall) RemoveHeader(key string) *SingleCall {
+	delete(c.headers, key)
+	return c
+}
+
 // Do
 // perform a send operation
 func (c *SingleCall) Do() (Response, error) {
@@ -107,7 +125,7 @@ func (c *SingleCall) Do() (Response, error) {
 	if err != nil {
 		return Response{}, err
 	}
-	resList, err := tcpCall(c.loadBalance(c.endpoints), c.timeout, c.requests)
+	resList, err := tcpCall(c.loadBalance(c.endpoints), c.timeout, c.requests, c.headers)
 	if err != nil {
 		return Response{}, err
 	}
@@ -118,27 +136,24 @@ func (c *SingleCall) Do() (Response, error) {
 }
 
 func (c *SingleCall) DoAndBind(v any) error {
-	err := requestValid(c.requests, c.endpoints, c.buildError)
+	res, err := c.Do()
 	if err != nil {
 		return err
 	}
-	resList, err := tcpCall(c.loadBalance(c.endpoints), c.timeout, c.requests)
-	if err != nil {
-		return err
-	}
-	if len(resList) == 0 {
-		return nil
-	}
-	return resList[0].Bind(v)
+	return res.Bind(v)
 }
 
-func (c *SingleCall) Broadcast() ([]BroadcastResponse, error) {
+// ----- callBase -----
+
+func (c *callBase) Broadcast() ([]BroadcastResponse, error) {
 	err := requestValid(c.requests, c.endpoints, c.buildError)
 	if err != nil {
 		return nil, err
 	}
-	return tcpBroadcast(c.endpoints, c.timeout, c.requests), nil
+	return tcpBroadcast(c.endpoints, c.timeout, c.requests, c.headers), nil
 }
+
+// ----- Response -----
 
 func (r *Response) Bind(v any) error {
 	if !r.Success() {
@@ -153,6 +168,8 @@ func (r *Response) Success() bool {
 	}
 	return true
 }
+
+// ----- Other -----
 
 func defaultLoadBalance(endpoints []string) string {
 	if len(endpoints) == 1 {
@@ -178,7 +195,7 @@ func requestValid(requests []request, endpoints []string, buildError error) erro
 	return nil
 }
 
-func tcpBroadcast(endpoints []string, timeout time.Duration, requests []request) []BroadcastResponse {
+func tcpBroadcast(endpoints []string, timeout time.Duration, requests []request, headers map[string]string) []BroadcastResponse {
 	var bcResList = make([]BroadcastResponse, len(endpoints))
 	wg := sync.WaitGroup{}
 	wg.Add(len(endpoints))
@@ -186,7 +203,7 @@ func tcpBroadcast(endpoints []string, timeout time.Duration, requests []request)
 		bcResList[i].Endpoint = endpoints[i]
 		go func(i int) {
 			defer wg.Done()
-			resList, err := tcpCall(endpoints[i], timeout, requests)
+			resList, err := tcpCall(endpoints[i], timeout, requests, headers)
 			if err != nil {
 				bcResList[i].Error = err
 				return
@@ -198,11 +215,14 @@ func tcpBroadcast(endpoints []string, timeout time.Duration, requests []request)
 	return bcResList
 }
 
-func tcpCall(endpoint string, timeout time.Duration, requests []request) ([]Response, error) {
+func tcpCall(endpoint string, timeout time.Duration, requests []request, headers map[string]string) ([]Response, error) {
 	if len(endpoint) == 0 {
 		return nil, errors.New("endpoint nil")
 	}
-	data, err := msgpack.Marshal(requests)
+	data, err := msgpack.Marshal(fullRequest{
+		Headers:  headers,
+		Requests: requests,
+	})
 	if err != nil {
 		return nil, err
 	}

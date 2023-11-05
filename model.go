@@ -40,6 +40,7 @@ type Context struct {
 	LocalAddr   string
 	CallMethod  string
 	CustomCache any
+	headers     map[string]string
 	input       []byte
 	output      []byte
 	index       int
@@ -53,6 +54,7 @@ type CallOptions struct {
 }
 
 type callBase struct {
+	headers     map[string]string
 	requests    []request
 	endpoints   []string
 	timeout     time.Duration
@@ -66,6 +68,11 @@ type ComboCall struct {
 
 type SingleCall struct {
 	callBase
+}
+
+type fullRequest struct {
+	Headers  map[string]string `msg:"h" msgpack:"h"`
+	Requests []request         `msg:"r" msgpack:"r"`
 }
 
 type request struct {

@@ -3,6 +3,7 @@ package test
 import (
 	"fmt"
 	"github.com/dpwgc/comborpc"
+	"sync"
 	"testing"
 	"time"
 )
@@ -65,7 +66,7 @@ func Test(t *testing.T) {
 	responseBind := TestResponse{}
 	err = comborpc.NewSingleCall(comborpc.CallOptions{
 		Endpoints: []string{endpoint},
-	}).SetRequest("testMethod3", TestRequest{
+	}).PutHeader("token", "12345678").SetRequest("testMethod3", TestRequest{
 		A1: "hello world 3",
 		A2: 1003,
 		A3: 54.1,
@@ -77,13 +78,35 @@ func Test(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
+	fmt.Println("-----\n5. stress test")
+	wg := sync.WaitGroup{}
+	wg.Add(30)
+	for i := 0; i < 30; i++ {
+		go func() {
+			err = comborpc.NewSingleCall(comborpc.CallOptions{
+				Endpoints: []string{endpoint},
+			}).PutHeader("token", "12345678").SetRequest("testMethod3", TestRequest{
+				A1: "stress test",
+				A2: 2000,
+				A3: 10.2,
+			}).DoAndBind(&responseBind)
+			wg.Done()
+			if err != nil {
+				panic(err)
+			}
+		}()
+	}
+	wg.Wait()
+
+	time.Sleep(1 * time.Second)
+
 	// 关闭服务端
-	fmt.Println("-----\n5. router close")
+	fmt.Println("-----\n6. router close")
 	router.Close()
 
 	time.Sleep(1 * time.Second)
 
-	fmt.Println("-----\n6. end test")
+	fmt.Println("-----\n7. end test")
 }
 
 // 新建并启动测试服务端路由
@@ -105,6 +128,7 @@ func enableTestRouter(endpoint string) {
 // 中间件1
 func testMiddleware1(ctx *comborpc.Context) {
 	fmt.Println("testMiddleware1 start")
+	fmt.Println("token: ", ctx.GetHeader("token"))
 	ctx.Next()
 	fmt.Println("testMiddleware1 end")
 }

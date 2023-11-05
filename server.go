@@ -2,6 +2,7 @@ package comborpc
 
 import (
 	"github.com/vmihailenco/msgpack/v5"
+	"log"
 	"time"
 )
 
@@ -62,6 +63,7 @@ func (r *Router) Run() error {
 	}()
 	s := newTcpServe(r)
 	go s.enableConsumer()
+	log.Println("listen and serve on", r.endpoint)
 	return s.enableListener()
 }
 
@@ -74,6 +76,7 @@ func (r *Router) Close() {
 	r.close = true
 	_ = r.listener.Close()
 	close(r.queue)
+	log.Println("turn off the listening and services on", r.endpoint)
 }
 
 // Next
@@ -92,12 +95,19 @@ func (c *Context) Abort() {
 	c.index = len(c.methods) + 1
 }
 
-func (c *Context) Read() []byte {
-	return c.input
+func (c *Context) Bind(v any) error {
+	return msgpack.Unmarshal(c.input, v)
 }
 
-func (c *Context) Bind(v any) error {
-	return msgpack.Unmarshal(c.Read(), v)
+func (c *Context) GetHeader(key string) string {
+	if c.headers == nil || len(c.headers) == 0 {
+		return ""
+	}
+	return c.headers[key]
+}
+
+func (c *Context) GetHeaders() map[string]string {
+	return c.headers
 }
 
 func (c *Context) Write(obj any) error {
