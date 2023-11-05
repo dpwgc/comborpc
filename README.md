@@ -1,6 +1,6 @@
 # ComboRPC
 
-## 一个基于 TCP + MessagePack + Gzip 的简易RPC框架
+## 一个基于 TCP + MessagePack 的简易RPC框架
 
 ### 特点
 
